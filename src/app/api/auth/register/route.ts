@@ -3,7 +3,17 @@ import { type NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/prisma'
-import { isValidCPF, isValidCPFFormat, cleanCPF, isAtLeast18YearsOld } from '@/lib/utils/validation'
+
+// Verificar se as funções de validação existem
+let validationFunctions: any = {};
+try {
+  const validation = require('@/lib/utils/validation');
+  validationFunctions = validation;
+  console.log('✅ [REGISTER] Funções de validação carregadas com sucesso');
+} catch (error: any) {
+  console.error('❌ [REGISTER] Erro ao carregar funções de validação:', error.message);
+  // Fallback para validações básicas
+}
 
 // Interface para os dados de registro
 interface RegisterData {
@@ -52,6 +62,45 @@ function isValidPassword(password: string): { isValid: boolean; errors: string[]
   if (!/[^A-Za-z0-9]/.test(password)) errors.push('Senha deve conter pelo menos um caractere especial');
   
   return { isValid: errors.length === 0, errors };
+}
+
+// Funções de validação locais
+function cleanCPF(cpf: string): string {
+  return cpf.replace(/\D/g, '');
+}
+
+function isValidCPF(cpf: string): boolean {
+  try {
+    if (validationFunctions.isValidCPF) {
+      return validationFunctions.isValidCPF(cpf);
+    }
+    // Fallback: apenas verificar se tem 11 dígitos
+    const cleaned = cleanCPF(cpf);
+    return cleaned.length === 11 && !/^(\d)\1{10}$/.test(cleaned);
+  } catch (error) {
+    console.error('Erro na validação de CPF:', error);
+    return false;
+  }
+}
+
+function isAtLeast18YearsOld(date: string): boolean {
+  try {
+    if (validationFunctions.isAtLeast18YearsOld) {
+      return validationFunctions.isAtLeast18YearsOld(date);
+    }
+    // Fallback: validação básica
+    const birthDate = new Date(date);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 18;
+  } catch (error) {
+    console.error('Erro na validação de idade:', error);
+    return false;
+  }
 }
 
 // Função para validar data de nascimento
@@ -202,8 +251,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validar dados de entrada
+    console.log('🔍 [REGISTER] Iniciando validação de dados...');
     const validation = validateRegisterData(body);
     if (!validation.isValid) {
+      console.log('❌ [REGISTER] Validação falhou:', validation.errors);
       return NextResponse.json(
         { 
           message: 'Dados de cadastro inválidos', 
@@ -212,6 +263,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    console.log('✅ [REGISTER] Validação de dados bem-sucedida');
     
     const {
       name: sanitizedName,
@@ -224,42 +276,59 @@ export async function POST(req: NextRequest) {
     } = validation.data!;
 
     // Verificar se o usuário já existe pelo email
-    const existingEmail = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    }).catch((error: any) => {
-      console.error('Erro ao verificar email existente:', error);
-      return null;
-    });
+    console.log('🔍 [REGISTER] Verificando email existente...');
+    try {
+      const existingEmail = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
 
-    if (existingEmail) {
+      if (existingEmail) {
+        console.log('❌ [REGISTER] Email já cadastrado');
+        return NextResponse.json(
+          { message: 'Email já cadastrado' },
+          { status: 400 }
+        );
+      }
+      console.log('✅ [REGISTER] Email disponível');
+    } catch (error: any) {
+      console.error('❌ [REGISTER] Erro ao verificar email existente:', error);
       return NextResponse.json(
-        { message: 'Email já cadastrado' },
-        { status: 400 }
+        { message: 'Erro ao verificar email. Tente novamente.' },
+        { status: 500 }
       );
     }
 
     // Verificar se o CPF já está cadastrado
-    const existingCPF = await prisma.user.findUnique({
-      where: { cpf },
-    }).catch((error: any) => {
-      console.error('Erro ao verificar CPF existente:', error);
-      return null;
-    });
+    console.log('🔍 [REGISTER] Verificando CPF existente...');
+    try {
+      const existingCPF = await prisma.user.findUnique({
+        where: { cpf },
+      });
 
-    if (existingCPF) {
+      if (existingCPF) {
+        console.log('❌ [REGISTER] CPF já cadastrado');
+        return NextResponse.json(
+          { message: 'CPF já cadastrado' },
+          { status: 400 }
+        );
+      }
+      console.log('✅ [REGISTER] CPF disponível');
+    } catch (error: any) {
+      console.error('❌ [REGISTER] Erro ao verificar CPF existente:', error);
       return NextResponse.json(
-        { message: 'CPF já cadastrado' },
-        { status: 400 }
+        { message: 'Erro ao verificar CPF. Tente novamente.' },
+        { status: 500 }
       );
     }
 
     // Hash da senha
+    console.log('🔍 [REGISTER] Gerando hash da senha...');
     let hashedPassword: string;
     try {
       hashedPassword = await bcrypt.hash(password, 12);
       console.log('✅ [REGISTER] Hash de senha criado com sucesso');
     } catch (error: any) {
-      console.error('Erro ao gerar hash da senha:', error);
+      console.error('❌ [REGISTER] Erro ao gerar hash da senha:', error);
       return NextResponse.json(
         { message: 'Erro ao processar senha' },
         { status: 500 }
@@ -268,12 +337,14 @@ export async function POST(req: NextRequest) {
 
     // Gerar token criptograficamente seguro
     const verificationToken = randomUUID();
+    console.log('✅ [REGISTER] Token de verificação gerado');
     
     // Criar usuário em transação para garantir consistência
+    let user: any;
     try {
       console.log('💾 [REGISTER] Iniciando transação do banco de dados...');
       
-      const user = await prisma.$transaction(async (tx: any) => {
+      user = await prisma.$transaction(async (tx: any) => {
         console.log('👤 [REGISTER] Criando usuário...');
         
         // Criar usuário
@@ -352,42 +423,8 @@ export async function POST(req: NextRequest) {
         return newUser;
       });
 
-      // Enviar email de verificação usando o serviço de email
-      try {
-        const { emailService } = await import('@/lib/services/emailService');
+      console.log(`✅ [REGISTER] Usuário registrado no banco: ${user.email} (ID: ${user.id})`);
 
-        // Construir a URL de verificação
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const verificationUrl = `${appUrl}/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(normalizedEmail)}`;
-    
-        // Enviar email de verificação
-        await emailService.sendVerificationEmail({
-          to: normalizedEmail,
-          name: sanitizedName || 'Usuário',
-          verificationUrl,
-          userId: user.id
-        });
-
-        console.log('✅ [REGISTER] Email de verificação enviado com sucesso');
-
-      } catch (emailError: any) {
-        console.error('⚠️ [REGISTER] Erro ao enviar email de verificação:', emailError);
-        // Não interrompe o fluxo, mas registra o erro
-      }
-
-      console.log(`✅ Usuário registrado com sucesso: ${user.email} (ID: ${user.id})`);
-
-      // Remover a senha e o token de verificação do objeto de retorno
-      const { password: __, emailVerificationToken: ___, ...userWithoutSensitiveData } = user;
-    
-      return NextResponse.json(
-        {
-          message: 'Usuário criado com sucesso. Por favor, verifique seu email para ativar sua conta.',
-          user: userWithoutSensitiveData,
-          requiresEmailVerification: true,
-        },
-        { status: 201 }
-      );
     } catch (dbError: any) {
       console.error('❌ [REGISTER] Erro de banco de dados ao criar usuário:', {
         message: dbError.message,
@@ -416,8 +453,51 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Enviar email de verificação de forma assíncrona (não bloquear o registro)
+    // Executar em background para não afetar a resposta ao usuário
+    setImmediate(async () => {
+      try {
+        console.log('📧 [REGISTER] Tentando enviar email de verificação...');
+        const { emailService } = await import('@/lib/services/emailService');
+
+        // Construir a URL de verificação
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const verificationUrl = `${appUrl}/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    
+        // Enviar email de verificação
+        await emailService.sendVerificationEmail({
+          to: normalizedEmail,
+          name: sanitizedName || 'Usuário',
+          verificationUrl,
+          userId: user.id
+        });
+
+        console.log('✅ [REGISTER] Email de verificação enviado com sucesso (background)');
+
+      } catch (emailError: any) {
+        console.error('⚠️ [REGISTER] Erro ao enviar email de verificação (background):', emailError);
+        // Email falhou, mas não afeta o registro do usuário
+      }
+    });
+
+    // Remover a senha e o token de verificação do objeto de retorno
+    const { password: __, emailVerificationToken: ___, ...userWithoutSensitiveData } = user;
+  
+    return NextResponse.json(
+      {
+        message: 'Usuário criado com sucesso. Por favor, verifique seu email para ativar sua conta.',
+        user: userWithoutSensitiveData,
+        requiresEmailVerification: true,
+      },
+      { status: 201 }
+    );
+
   } catch (error: any) {
-    console.error('❌ [REGISTER] Erro geral ao registrar usuário:', error);
+    console.error('❌ [REGISTER] Erro geral ao registrar usuário:', {
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 10).join('\n')
+    });
     return NextResponse.json(
       { message: 'Erro interno ao processar sua solicitação' },
       { status: 500 }
