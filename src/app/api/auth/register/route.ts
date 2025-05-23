@@ -1,4 +1,4 @@
-import '../../../lib/env-runtime'
+import '@/lib/env-runtime'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 
