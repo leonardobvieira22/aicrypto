@@ -176,6 +176,14 @@ function validateRegisterData(data: any): { isValid: boolean; errors: Validation
 
 export async function POST(req: NextRequest) {
   console.log('🚀 [REGISTER] Iniciando processo de registro...');
+  console.log('🔍 [REGISTER] Ambiente detectado:', {
+    NODE_ENV: process.env.NODE_ENV,
+    AWS_REGION: process.env.AWS_REGION,
+    AWS_LAMBDA_FUNCTION_NAME: !!process.env.AWS_LAMBDA_FUNCTION_NAME,
+    AMPLIFY_BUILD: process.env.AMPLIFY_BUILD,
+    hasPostgreSQL: process.env.DATABASE_URL?.includes('postgresql://'),
+    prismaExists: !!prisma
+  });
   
   try {
     // Verificar limite de taxa
