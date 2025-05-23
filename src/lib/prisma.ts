@@ -119,7 +119,16 @@ class MockPrismaClient {
       this.mockUsers.splice(userIndex, 1);
 
       return deletedUser;
-    }
+    },
+
+    findFirst: async () => null,
+    findMany: async () => [],
+    upsert: async (params: any) => ({
+      id: 'mock_id',
+      ...params.create
+    }),
+    count: async () => 0,
+    deleteMany: async () => ({ count: 0 })
   };
 
   tradingSetting = {
@@ -166,10 +175,61 @@ class MockPrismaClient {
     },
   };
 
-  // Método para fechamento de conexão
-  $disconnect() {
-    return Promise.resolve();
-  }
+  portfolio = {
+    findMany: async () => [],
+    findUnique: async () => null,
+    create: async (data: any) => ({
+      id: `mock_${Math.random().toString(36).substr(2, 9)}`,
+      userId: data.data?.userId || 'mock_user_id',
+      ...data.data
+    }),
+    update: async () => ({}),
+    delete: async () => ({}),
+    count: async () => 0
+  };
+
+  trade = {
+    findMany: async () => [],
+    create: async (data: any) => ({
+      id: `mock_${Math.random().toString(36).substr(2, 9)}`,
+      ...data.data
+    }),
+    count: async () => 0
+  };
+
+  alert = {
+    findMany: async () => [],
+    create: async () => ({}),
+    count: async () => 0
+  };
+
+  auditLog = {
+    create: async () => ({}),
+    findMany: async () => [],
+    count: async () => 0
+  };
+
+  // Implementar método $transaction
+  $transaction = async (operations: any[]) => {
+    // Mock simples: executar todas as operações em sequência
+    const results = [];
+    for (const operation of operations) {
+      if (typeof operation === 'function') {
+        results.push(await operation(this));
+      } else {
+        results.push(operation);
+      }
+    }
+    return results;
+  };
+
+  // Métodos de conexão
+  $connect = async () => {};
+  $disconnect = async () => {};
+  
+  // Método para queries raw (se necessário)
+  $queryRaw = async () => [];
+  $executeRaw = async () => 0;
 }
 
 // Função que decide se deve usar o Prisma real ou o mock
