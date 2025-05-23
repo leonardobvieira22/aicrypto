@@ -1,0 +1,9 @@
+# OBRIGATÓRIAS
+DATABASE_URL="postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-pooler.us-east-2.aws.neon.tech/crypto_trading_db?sslmode=require"
+NEXTAUTH_URL="https://main.d12weap3xjmri9.amplifyapp.com"
+NEXTAUTH_SECRET="CzcdyaW4UKNtn7ySgrNCQxHfX5LoZbUR7fIn2qsmKBU="
+JWT_SECRET="CzcdyaW4UKNtn7ySgrNCQxHfX5LoZbUR7fIn2qsmKBU="
+NEXT_PUBLIC_BINANCE_API_KEY="VGQ0dhdCcHjDhEjj0Xuue3ZtyIZHiG9NK8chA4ew0HMQMywydjrVrLTWeN8nnZ9e"
+BINANCE_API_SECRET="jHrPFutd2fQH2AECeABbG6mDvbJqhEYBt1kuYmiWfcBjJV22Fwtykqx8mDFle3dO"
+NEXT_PUBLIC_APP_URL="https://main.d12weap3xjmri9.amplifyapp.com"
+EMAIL_FROM="noreply@aicrypto.com"

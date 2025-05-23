@@ -1,0 +1,388 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definição da fonte Inter e estilos base */
+@layer base {
+  :root {
+    --font-sans: 'Inter', sans-serif;
+
+    /* Sistema de cores unificado usando HSL */
+    --background: 0 0% 100%;
+    --foreground: 222 14% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 14% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 14% 7%;
+
+    /* Cor principal - roxo */
+    --primary: 241 65% 59%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Cor secundária - azul claro */
+    --secondary: 198 80% 92%;
+    --secondary-foreground: 241 65% 59%;
+
+    /* Cor neutra para elementos sutis */
+    --muted: 210 20% 98%;
+    --muted-foreground: 220 14% 35%; /* Escurecido para melhorar contraste em fundo claro */
+
+    /* Cor de destaque para hover, etc */
+    --accent: 210 20% 97%;
+    --accent-foreground: 222 20% 5%;
+
+    /* Cor para ações destrutivas */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Cor para sucesso e estados positivos */
+    --success: 142 76% 38%;
+    --success-foreground: 0 0% 100%;
+
+    /* Cor para avisos/alertas */
+    --warning: 38 92% 40%;
+    --warning-foreground: 0 0% 0%;
+
+    /* Cor para informações neutras */
+    --info: 214 100% 60%;
+    --info-foreground: 0 0% 100%;
+
+    /* Cores para elementos de UI */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 71% 45%;
+
+    --radius: 5px;
+  }
+
+  .dark {
+    --background: 222 14% 7%;
+    --foreground: 0 0% 100%;
+
+    --card: 222 14% 7%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 222 14% 7%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 241 65% 59%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 85%; /* Aumentado para melhor contraste em fundo escuro */
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 85% 55%;
+    --success-foreground: 0 0% 0%;
+
+    --warning: 38 100% 65%;
+    --warning-foreground: 0 0% 0%;
+
+    --info: 214 100% 70%;
+    --info-foreground: 0 0% 0%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 224 71% 45%;
+  }
+
+  html, body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  a, button, input, select, textarea {
+    font-family: var(--font-sans);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.4; /* Melhorado para legibilidade */
+    margin-bottom: 1rem;
+    @apply text-foreground;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    letter-spacing: -0.025em;
+    font-weight: 700; /* Mais bold para maior destaque */
+  }
+
+  h2 {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    letter-spacing: -0.025em;
+    font-weight: 700; /* Consistente com h1 */
+  }
+
+  h3 {
+    font-size: clamp(1.5rem, 3vw, 1.75rem);
+    letter-spacing: -0.025em;
+    font-weight: 600; /* Bom destaque, mas não tão forte quanto h1/h2 */
+  }
+
+  h4 {
+    font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: clamp(1.125rem, 2vw, 1.25rem);
+    font-weight: 600;
+  }
+
+  h6 {
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    font-weight: 600;
+  }
+
+  p {
+    margin-bottom: 1.25rem;
+    line-height: 1.8; /* Espaçamento maior para melhor legibilidade */
+    font-size: 1rem; /* Tamanho base garantido */
+    @apply text-muted-foreground font-medium; /* Medium weight para melhor legibilidade */
+  }
+}
+
+/* Componentes customizados */
+@layer components {
+  /* Componentes estilizados compatíveis com shadcn/ui */
+  .custom-section {
+    @apply py-16 md:py-24;
+  }
+
+  .custom-section-alt {
+    @apply bg-secondary py-16 md:py-24;
+  }
+
+  .custom-container {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl;
+  }
+
+  .feature-icon {
+    @apply h-12 w-12 rounded-full bg-secondary p-2.5 text-primary shadow-sm;
+  }
+
+  .custom-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold leading-tight tracking-tight text-foreground;
+  }
+
+  .custom-subtitle {
+    @apply text-lg sm:text-xl text-muted-foreground font-medium mt-4 mb-8 max-w-2xl;
+  }
+
+  .custom-badge {
+    @apply inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-primary shadow-sm;
+  }
+
+  /* Estilos específicos para melhorar legibilidade de texto */
+  .text-high-contrast {
+    @apply text-foreground font-medium;
+  }
+
+  .text-medium-contrast {
+    @apply text-muted-foreground font-medium;
+  }
+
+  /* Botões com melhor contraste */
+  .btn-high-contrast {
+    @apply bg-primary text-primary-foreground font-medium shadow-sm hover:shadow-md;
+  }
+
+  .btn-outline-high-contrast {
+    @apply border-2 border-primary bg-transparent text-primary font-medium hover:bg-primary/10;
+  }
+
+  .glassmorphism-card {
+    @apply bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl;
+  }
+  
+  .animate-float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+  }
+  
+  .animate-float-medium {
+    animation: float-medium 4s ease-in-out infinite;
+  }
+  
+  .animate-float-fast {
+    animation: float-fast 3s ease-in-out infinite;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-in-out forwards;
+  }
+
+  /* Dashboard specific styles */
+  .dashboard-glass {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(55, 65, 81, 0.3);
+  }
+
+  .dashboard-gradient-bg {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 50%, rgba(17, 24, 39, 0.95) 100%);
+  }
+
+  .dashboard-card {
+    @apply bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl border border-gray-700/50 backdrop-blur-sm;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dashboard-card:hover {
+    @apply border-gray-600/70 transform scale-[1.02];
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .glow-effect {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+
+  /* Improved scrollbar for dark theme */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(55, 65, 81, 0.2);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(107, 114, 128, 0.5);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.7);
+  }
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Adicione aos utilitários do Tailwind */
+@layer utilities {
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, rgba(55, 65, 81, 0.2) 25%, rgba(75, 85, 99, 0.3) 50%, rgba(55, 65, 81, 0.2) 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    .mobile-optimized {
+      padding: 0.75rem;
+    }
+    
+    .mobile-text {
+      font-size: 0.875rem;
+    }
+    
+    .mobile-spacing {
+      gap: 0.75rem;
+    }
+  }
+}
