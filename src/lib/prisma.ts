@@ -8,7 +8,7 @@ class MockPrismaClient {
       name: 'Admin User',
       email: 'admin@example.com',
       role: 'ADMIN',
-      password: '$2b$10$EikMgY7SvXVNC3t9oNK.C.S1BAqZ36jY/T14XFp.JwfZ5lP/X4R3m', // "admin123" criptografado
+      password: '$2b$12$8Ok4UG4/ca1cBHe9OaoCt.1jL2C6J3t9fPdJwFlmznG56QlHFMLBi', // admin123
       cpf: '123.456.789-00',
       dateOfBirth: new Date('1990-01-01'),
       isActive: true,
@@ -22,7 +22,7 @@ class MockPrismaClient {
       name: 'Usuário Demo',
       email: 'demo@example.com',
       role: 'USER',
-      password: '$2b$10$rMeOXgEfpGj9NajHmqMoHO8BsPJQaB.J1g3lJCWQa4aFCTwOf69nO', // "demo123" criptografado
+      password: '$2b$12$4OUKJNWuM4YbcqnBaEjTnuzU3XP8d7mGeOEPJxgMpZDfESwYsuo3O', // demo123
       cpf: '987.654.321-00',
       dateOfBirth: new Date('1995-05-15'),
       isActive: true,
@@ -180,6 +180,12 @@ function getPrismaClient(): PrismaClient {
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
+  // Verificar se estamos em um ambiente de build do Amplify
+  if (process.env.AWS_AMPLIFY_BUILD === 'true' || process.env.AMPLIFY_BUILD === 'true') {
+    console.log('Detectado ambiente de build do Amplify - usando mock Prisma');
+    return new MockPrismaClient() as unknown as PrismaClient;
+  }
+
   // Tentar importar e criar o PrismaClient real
   try {
     // Importação dinâmica para evitar erro em ambientes sem dependência do Prisma
@@ -195,26 +201,31 @@ function getPrismaClient(): PrismaClient {
         log: process.env.NODE_ENV === 'development'
           ? ['query', 'error', 'warn']
           : ['error'],
+        // Configurações específicas para ambientes de produção/build
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL || 'file:./dev.db'
+          }
+        }
       });
 
       console.log('Prisma Client inicializado com sucesso');
     }
 
-    // Garantir que o retorno nunca seja undefined, usando fallback para nova instância do PrismaClient.
-    return globalForPrisma.prisma ?? new PrismaClient();
-
+    return globalForPrisma.prisma;
   } catch (error) {
-    console.error('Erro ao inicializar Prisma Client:', error);
-    console.log('Usando PrismaClient mock devido a erro de inicialização');
+    console.warn('Erro ao inicializar Prisma Client real:', error);
+    console.log('Usando PrismaClient mock como fallback');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 }
 
-// Importar tipo do Prisma Client para garantir compatibilidade de tipos
-import type { PrismaClient } from '@prisma/client';
-
-// Exportar instância
+// Exportar o cliente
 const prisma = getPrismaClient();
+
+// Tipo do PrismaClient para compatibilidade
+type PrismaClient = any;
+
 export default prisma;
 
 // Substituir require() por import ES6, exceto em arquivos gerados.
