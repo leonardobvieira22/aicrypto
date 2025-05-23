@@ -234,37 +234,94 @@ class MockPrismaClient {
 
 // Função que decide se deve usar o Prisma real ou o mock
 function getPrismaClient(): PrismaClient {
+  // Log detalhado do ambiente para debug do erro 500
+  console.log('🔍 [PRISMA] Inicializando Prisma Client...');
+  console.log('🔍 [PRISMA] Environment variables:');
+  console.log('- NODE_ENV:', process.env.NODE_ENV);
+  console.log('- AWS_LAMBDA_FUNCTION_NAME:', process.env.AWS_LAMBDA_FUNCTION_NAME);
+  console.log('- AWS_REGION:', process.env.AWS_REGION);
+  console.log('- AWS_AMPLIFY_BUILD:', process.env.AWS_AMPLIFY_BUILD);
+  console.log('- AMPLIFY_BUILD:', process.env.AMPLIFY_BUILD);
+  console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'PRESENTE' : 'AUSENTE');
+  console.log('- typeof window:', typeof window);
+
   // Verificar se estamos no navegador (não suportado pelo Prisma)
   if (typeof window !== 'undefined') {
-    console.log('🔍 Usando PrismaClient mock (browser environment)');
+    console.log('🔍 [PRISMA] Usando PrismaClient mock (browser environment)');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
-  // Verificar se estamos em um ambiente de BUILD do Amplify (não runtime)
-  // Durante o build, AWS_LAMBDA_FUNCTION_NAME não está definido
+  // Detectar ambiente AWS Lambda (produção)
+  const isAWSLambda = !!(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.AWS_REGION);
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  console.log('🔍 [PRISMA] Detecção de ambiente:');
+  console.log('- isAWSLambda:', isAWSLambda);
+  console.log('- isProduction:', isProduction);
+
+  // EM PRODUÇÃO AWS LAMBDA: SEMPRE usar PrismaClient real
+  if (isProduction && isAWSLambda) {
+    console.log('🚀 [PRISMA] PRODUÇÃO AWS LAMBDA DETECTADA - forçando PrismaClient real');
+    
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ [PRISMA] ERRO CRÍTICO: DATABASE_URL não encontrada em produção!');
+      throw new Error('DATABASE_URL é obrigatória em produção AWS Lambda');
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { PrismaClient } = require('@prisma/client');
+
+      // Objeto global para armazenar a instância do Prisma
+      const globalForPrisma = global as unknown as { prisma?: PrismaClient };
+
+      // Criar ou reutilizar instância
+      if (!globalForPrisma.prisma) {
+        console.log('✅ [PRISMA] Criando nova instância do PrismaClient para produção');
+        globalForPrisma.prisma = new PrismaClient({
+          log: ['error'],
+          datasources: {
+            db: {
+              url: process.env.DATABASE_URL
+            }
+          }
+        });
+
+        console.log('✅ [PRISMA] Prisma Client inicializado com sucesso para produção');
+        console.log(`📊 [PRISMA] Conectado ao banco: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'N/A'}`);
+      } else {
+        console.log('♻️ [PRISMA] Reutilizando instância existente do PrismaClient');
+      }
+
+      return globalForPrisma.prisma;
+    } catch (error) {
+      console.error('❌ [PRISMA] ERRO CRÍTICO ao inicializar Prisma Client em produção:', error);
+      // Em produção, falhar completamente ao invés de usar mock
+      throw new Error(`Falha crítica na inicialização do Prisma em produção: ${error}`);
+    }
+  }
+
+  // Detectar ambiente de BUILD (não runtime)
   const isBuildTime = (
     (process.env.AWS_AMPLIFY_BUILD === 'true' || process.env.AMPLIFY_BUILD === 'true') &&
-    !process.env.AWS_LAMBDA_FUNCTION_NAME && // No runtime Lambda, esta variável existe
-    !process.env.VERCEL && // Não é Vercel
-    !process.env.DATABASE_URL?.includes('postgresql://') // Não tem URL PostgreSQL válida
+    !isAWSLambda // Se for Lambda, sempre runtime
   );
 
   if (isBuildTime) {
-    console.log('🏗️ Detectado ambiente de BUILD do Amplify - usando mock Prisma');
+    console.log('🏗️ [PRISMA] Detectado ambiente de BUILD do Amplify - usando mock Prisma');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
-  // Verificar se temos uma URL de banco válida
+  // Para desenvolvimento local, verificar se temos DATABASE_URL
   if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('file:')) {
-    console.log('⚠️ Sem DATABASE_URL válida - usando mock Prisma');
+    console.log('⚠️ [PRISMA] Desenvolvimento local sem DATABASE_URL válida - usando mock Prisma');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
-  // Tentar importar e criar o PrismaClient real
+  // Tentar usar PrismaClient real (desenvolvimento com banco)
   try {
-    console.log('🚀 Inicializando PrismaClient real para produção...');
+    console.log('🚀 [PRISMA] Inicializando PrismaClient real para desenvolvimento...');
     
-    // Importação dinâmica para evitar erro em ambientes sem dependência do Prisma
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PrismaClient } = require('@prisma/client');
 
@@ -274,10 +331,7 @@ function getPrismaClient(): PrismaClient {
     // Criar ou reutilizar instância
     if (!globalForPrisma.prisma) {
       globalForPrisma.prisma = new PrismaClient({
-        log: process.env.NODE_ENV === 'development'
-          ? ['query', 'error', 'warn']
-          : ['error'],
-        // Configurações específicas para ambientes de produção
+        log: ['query', 'error', 'warn'],
         datasources: {
           db: {
             url: process.env.DATABASE_URL
@@ -285,14 +339,14 @@ function getPrismaClient(): PrismaClient {
         }
       });
 
-      console.log('✅ Prisma Client inicializado com sucesso para produção');
-      console.log(`📊 Conectado ao banco: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'N/A'}`);
+      console.log('✅ [PRISMA] Prisma Client inicializado com sucesso para desenvolvimento');
+      console.log(`📊 [PRISMA] Conectado ao banco: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'N/A'}`);
     }
 
     return globalForPrisma.prisma;
   } catch (error) {
-    console.error('❌ Erro ao inicializar Prisma Client real:', error);
-    console.log('🔄 Usando PrismaClient mock como fallback');
+    console.error('❌ [PRISMA] Erro ao inicializar Prisma Client real:', error);
+    console.log('🔄 [PRISMA] Usando PrismaClient mock como fallback');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 }
