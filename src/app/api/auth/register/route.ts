@@ -282,16 +282,22 @@ export async function POST(req: NextRequest) {
     console.log('🔍 [REGISTER] DATABASE_URL tipo:', process.env.DATABASE_URL?.substring(0, 20) + '...');
     
     try {
-      // Primeiro, testar se o Prisma consegue se conectar
-      console.log('🔍 [REGISTER] Testando conexão básica do Prisma...');
-      await prisma.$connect();
-      console.log('✅ [REGISTER] Conexão Prisma estabelecida');
+      // Configurar timeout específico para AWS Lambda
+      const LAMBDA_TIMEOUT = 5000; // 5 segundos
       
-      // Agora tentar a consulta
-      console.log('🔍 [REGISTER] Executando consulta de email...');
-      const existingEmail = await prisma.user.findUnique({
+      console.log('🔍 [REGISTER] Executando consulta de email com timeout...');
+      
+      // Usar Promise.race para implementar timeout manual
+      const existingEmailPromise = prisma.user.findUnique({
         where: { email: normalizedEmail },
+        select: { id: true, email: true } // Selecionar apenas campos necessários
       });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('TIMEOUT')), LAMBDA_TIMEOUT);
+      });
+      
+      const existingEmail = await Promise.race([existingEmailPromise, timeoutPromise]) as any;
 
       if (existingEmail) {
         console.log('❌ [REGISTER] Email já cadastrado');
@@ -309,33 +315,16 @@ export async function POST(req: NextRequest) {
         stack: error.stack?.split('\n').slice(0, 3).join('\n')
       });
       
-      // Se for erro de conexão, tentar reconectar
-      if (error.code === 'P1001' || error.message?.includes('connection')) {
-        console.log('🔄 [REGISTER] Tentando reconectar ao banco...');
-        try {
-          await prisma.$disconnect();
-          await prisma.$connect();
-          console.log('✅ [REGISTER] Reconexão bem-sucedida, tentando novamente...');
-          
-          const existingEmail = await prisma.user.findUnique({
-            where: { email: normalizedEmail },
-          });
-
-          if (existingEmail) {
-            console.log('❌ [REGISTER] Email já cadastrado (após reconexão)');
-            return NextResponse.json(
-              { message: 'Email já cadastrado' },
-              { status: 400 }
-            );
-          }
-          console.log('✅ [REGISTER] Email disponível (após reconexão)');
-        } catch (retryError: any) {
-          console.error('❌ [REGISTER] Erro na reconexão:', retryError.message);
-          return NextResponse.json(
-            { message: 'Erro de conexão com o banco de dados. Tente novamente em alguns instantes.' },
-            { status: 503 }
-          );
-        }
+      // Se for timeout, tentar uma estratégia simplificada
+      if (error.message === 'TIMEOUT') {
+        console.log('⏰ [REGISTER] Timeout na consulta - continuando sem verificação prévia de email');
+        console.log('🔄 [REGISTER] O sistema irá capturar duplicatas durante a criação do usuário');
+        // Continuar sem verificação prévia - o banco capturará duplicatas
+      } else if (error.code === 'P1001' || error.message?.includes('connection')) {
+        return NextResponse.json(
+          { message: 'Erro de conexão com o banco de dados. Tente novamente em alguns instantes.' },
+          { status: 503 }
+        );
       } else {
         return NextResponse.json(
           { message: 'Erro ao verificar email. Tente novamente.' },
@@ -347,9 +336,21 @@ export async function POST(req: NextRequest) {
     // Verificar se o CPF já está cadastrado
     console.log('🔍 [REGISTER] Verificando CPF existente...');
     try {
-      const existingCPF = await prisma.user.findUnique({
+      // Usar o mesmo timeout para consistência
+      const LAMBDA_TIMEOUT = 5000; // 5 segundos
+      
+      console.log('🔍 [REGISTER] Executando consulta de CPF com timeout...');
+      
+      const existingCPFPromise = prisma.user.findUnique({
         where: { cpf },
+        select: { id: true, cpf: true } // Selecionar apenas campos necessários
       });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('TIMEOUT')), LAMBDA_TIMEOUT);
+      });
+      
+      const existingCPF = await Promise.race([existingCPFPromise, timeoutPromise]) as any;
 
       if (existingCPF) {
         console.log('❌ [REGISTER] CPF já cadastrado');
@@ -360,11 +361,28 @@ export async function POST(req: NextRequest) {
       }
       console.log('✅ [REGISTER] CPF disponível');
     } catch (error: any) {
-      console.error('❌ [REGISTER] Erro ao verificar CPF existente:', error);
-      return NextResponse.json(
-        { message: 'Erro ao verificar CPF. Tente novamente.' },
-        { status: 500 }
-      );
+      console.error('❌ [REGISTER] Erro ao verificar CPF existente:', {
+        message: error.message,
+        code: error.code,
+        name: error.name
+      });
+      
+      // Se for timeout, continuar sem verificação prévia
+      if (error.message === 'TIMEOUT') {
+        console.log('⏰ [REGISTER] Timeout na consulta de CPF - continuando sem verificação prévia');
+        console.log('🔄 [REGISTER] O sistema irá capturar duplicatas durante a criação do usuário');
+        // Continuar sem verificação prévia - o banco capturará duplicatas
+      } else if (error.code === 'P1001' || error.message?.includes('connection')) {
+        return NextResponse.json(
+          { message: 'Erro de conexão com o banco de dados. Tente novamente em alguns instantes.' },
+          { status: 503 }
+        );
+      } else {
+        return NextResponse.json(
+          { message: 'Erro ao verificar CPF. Tente novamente.' },
+          { status: 500 }
+        );
+      }
     }
 
     // Hash da senha
