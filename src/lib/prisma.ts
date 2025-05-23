@@ -176,18 +176,34 @@ class MockPrismaClient {
 function getPrismaClient(): PrismaClient {
   // Verificar se estamos no navegador (não suportado pelo Prisma)
   if (typeof window !== 'undefined') {
-    console.log('Usando PrismaClient mock (browser environment)');
+    console.log('🔍 Usando PrismaClient mock (browser environment)');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
-  // Verificar se estamos em um ambiente de build do Amplify
-  if (process.env.AWS_AMPLIFY_BUILD === 'true' || process.env.AMPLIFY_BUILD === 'true') {
-    console.log('Detectado ambiente de build do Amplify - usando mock Prisma');
+  // Verificar se estamos em um ambiente de BUILD do Amplify (não runtime)
+  // Durante o build, AWS_LAMBDA_FUNCTION_NAME não está definido
+  const isBuildTime = (
+    (process.env.AWS_AMPLIFY_BUILD === 'true' || process.env.AMPLIFY_BUILD === 'true') &&
+    !process.env.AWS_LAMBDA_FUNCTION_NAME && // No runtime Lambda, esta variável existe
+    !process.env.VERCEL && // Não é Vercel
+    !process.env.DATABASE_URL?.includes('postgresql://') // Não tem URL PostgreSQL válida
+  );
+
+  if (isBuildTime) {
+    console.log('🏗️ Detectado ambiente de BUILD do Amplify - usando mock Prisma');
+    return new MockPrismaClient() as unknown as PrismaClient;
+  }
+
+  // Verificar se temos uma URL de banco válida
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('file:')) {
+    console.log('⚠️ Sem DATABASE_URL válida - usando mock Prisma');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 
   // Tentar importar e criar o PrismaClient real
   try {
+    console.log('🚀 Inicializando PrismaClient real para produção...');
+    
     // Importação dinâmica para evitar erro em ambientes sem dependência do Prisma
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PrismaClient } = require('@prisma/client');
@@ -201,21 +217,22 @@ function getPrismaClient(): PrismaClient {
         log: process.env.NODE_ENV === 'development'
           ? ['query', 'error', 'warn']
           : ['error'],
-        // Configurações específicas para ambientes de produção/build
+        // Configurações específicas para ambientes de produção
         datasources: {
           db: {
-            url: process.env.DATABASE_URL || 'file:./dev.db'
+            url: process.env.DATABASE_URL
           }
         }
       });
 
-      console.log('Prisma Client inicializado com sucesso');
+      console.log('✅ Prisma Client inicializado com sucesso para produção');
+      console.log(`📊 Conectado ao banco: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'N/A'}`);
     }
 
     return globalForPrisma.prisma;
   } catch (error) {
-    console.warn('Erro ao inicializar Prisma Client real:', error);
-    console.log('Usando PrismaClient mock como fallback');
+    console.error('❌ Erro ao inicializar Prisma Client real:', error);
+    console.log('🔄 Usando PrismaClient mock como fallback');
     return new MockPrismaClient() as unknown as PrismaClient;
   }
 }

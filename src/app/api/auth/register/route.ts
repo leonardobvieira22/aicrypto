@@ -4,6 +4,9 @@ import { randomUUID } from 'crypto'
 import prisma from '@/lib/prisma'
 import { isValidCPF, isValidCPFFormat, cleanCPF, isAtLeast18YearsOld } from '@/lib/utils/validation'
 
+// Configurar ambiente de runtime para produção
+import '@/lib/env-runtime'
+
 // Interface para os dados de registro
 interface RegisterData {
   name: string;
