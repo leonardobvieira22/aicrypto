@@ -14,6 +14,10 @@ DATABASE_URL="file:./build.db"
 NEXT_PUBLIC_BINANCE_API_KEY="demo-key-for-build"
 BINANCE_API_SECRET="demo-secret-for-build"
 
+# MailerSend Configuration para produção
+MAILERSEND_API_TOKEN="mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9"
+EMAIL_FROM="MS_bJGZoJ@trial-yzkq340ppqn4d0re.mlsender.net"
+ADMIN_EMAIL="leonardobvieira22@gmail.com"
+
 # OBRIGATÓRIAS
 NEXT_PUBLIC_APP_URL="https://main.d3guzetquh8hew.amplifyapp.com"
-EMAIL_FROM="noreply@aicrypto.com"

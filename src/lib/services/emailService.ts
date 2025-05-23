@@ -1,7 +1,31 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import fetch from 'node-fetch';
 import prisma from '@/lib/prisma';
-import { EmailStatus, EmailType } from '@prisma/client';
+
+// Importar tipos e constantes de email do cliente Prisma
+type EmailStatus = 'PENDING' | 'SENT' | 'FAILED' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'BOUNCED' | 'SPAM' | 'BLOCKED';
+type EmailType = 'VERIFICATION' | 'PASSWORD_RESET' | 'NOTIFICATION' | 'ALERT' | 'TEST' | 'OTHER';
+
+const EmailStatus = {
+  PENDING: 'PENDING' as const,
+  SENT: 'SENT' as const,
+  FAILED: 'FAILED' as const,
+  DELIVERED: 'DELIVERED' as const,
+  OPENED: 'OPENED' as const,
+  CLICKED: 'CLICKED' as const,
+  BOUNCED: 'BOUNCED' as const,
+  SPAM: 'SPAM' as const,
+  BLOCKED: 'BLOCKED' as const
+};
+
+const EmailType = {
+  VERIFICATION: 'VERIFICATION' as const,
+  PASSWORD_RESET: 'PASSWORD_RESET' as const,
+  NOTIFICATION: 'NOTIFICATION' as const,
+  ALERT: 'ALERT' as const,
+  TEST: 'TEST' as const,
+  OTHER: 'OTHER' as const
+};
 
 // Interfaces para os emails
 interface EmailVerificationParams {
@@ -25,11 +49,19 @@ interface EmailTrackingParams {
   details?: string;
 }
 
-// Token do MailerSend API - usando diretamente o token fornecido para garantir o funcionamento
-const MAILERSEND_API_TOKEN = 'mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9';
+// Configurações do MailerSend
+const MAILERSEND_API_TOKEN = process.env.MAILERSEND_API_TOKEN || 'mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9';
 const MAILERSEND_API_URL = 'https://api.mailersend.com/v1/email';
-const DEFAULT_FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@aicrypto.com';
+
+// Usar o domínio verificado correto do trial
+const DEFAULT_FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@test-dnvo4d9mxy6g5r86.mlsender.net';
 const DEFAULT_FROM_NAME = 'AI Crypto Trading';
+
+// Email do administrador para contas trial - DEVE SER O EMAIL CADASTRADO NA CONTA MAILERSEND
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'leonardobvieira22@gmail.com';
+
+// Verificar se estamos em modo trial
+const IS_TRIAL_MODE = DEFAULT_FROM_EMAIL.includes('test-') || DEFAULT_FROM_EMAIL.includes('.mlsender.net');
 
 /**
  * Registrar log de email no banco de dados
@@ -76,18 +108,8 @@ const logEmailAttempt = async ({
  */
 const updateEmailStatus = async ({ messageId, status, details }: EmailTrackingParams) => {
   try {
-    // Implemente a atualização do status do email no banco de dados
-    // Observe que isso requer que você tenha armazenado o messageId no log do email
     console.log(`Atualizando status do email ${messageId} para ${status}`);
-
-    // Código de exemplo para atualizar o status (a implementação real depende da sua estratégia de armazenamento de messageId)
-    // await prisma.emailLog.update({
-    //   where: { messageId },
-    //   data: {
-    //     status,
-    //     statusDetails: details
-    //   }
-    // });
+    // Implementação futura para tracking de mensagens
   } catch (error) {
     console.error('Erro ao atualizar status do email:', error);
   }
@@ -117,14 +139,49 @@ const sendMailWithMailerSend = async ({
 }) => {
   try {
     console.log(`Enviando email para ${to_email} via MailerSend`);
+    
+    // Para contas trial, SEMPRE redirecionar para o email do admin
+    let finalToEmail = ADMIN_EMAIL;
+    let finalToName = `Admin - Destinatário: ${to_name}`;
+    let finalSubject = subject;
+    
+    if (IS_TRIAL_MODE) {
+      // Adicionar informações do destinatário original no subject e conteúdo
+      finalSubject = `[TRIAL] Para: ${to_email} - ${subject}`;
+      
+      // Adicionar nota no HTML sobre o modo trial
+      html = `
+        <div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 20px; margin-bottom: 20px; border-radius: 8px; font-family: Arial, sans-serif;">
+          <h3 style="margin: 0 0 10px 0; color: #856404;">🧪 MODO TRIAL - MAILERSEND</h3>
+          <p style="margin: 0; color: #856404;">
+            <strong>Destinatário original:</strong> ${to_email} (${to_name})<br>
+            <strong>Tipo de email:</strong> ${emailType}<br>
+            <strong>Sistema:</strong> AI Crypto Trading Platform
+          </p>
+        </div>
+        ${html}
+      `;
+      
+      text = `[MODO TRIAL MAILERSEND]
+Destinatário original: ${to_email} (${to_name})
+Tipo de email: ${emailType}
+Sistema: AI Crypto Trading Platform
+
+=====================================
+
+${text}`;
+      
+      console.log(`⚠️ Modo trial ativo: redirecionando email de ${to_email} para ${ADMIN_EMAIL}`);
+    }
 
     // Registrar tentativa de envio
     await logEmailAttempt({
-      toEmail: to_email,
+      toEmail: to_email, // Manter o email original no log
       toName: to_name,
       subject,
       emailType,
       status: 'PENDING',
+      statusDetails: IS_TRIAL_MODE ? `Trial mode: redirecionado para ${finalToEmail}` : undefined,
       userId
     });
 
@@ -141,11 +198,11 @@ const sendMailWithMailerSend = async ({
         },
         to: [
           {
-            email: to_email,
-            name: to_name || to_email.split('@')[0]
+            email: finalToEmail,
+            name: finalToName
           }
         ],
-        subject,
+        subject: finalSubject,
         html,
         text
       })
@@ -189,7 +246,7 @@ const sendMailWithMailerSend = async ({
       subject,
       emailType,
       status: 'SENT',
-      statusDetails: `Message ID: ${data.message_id || 'N/A'}`,
+      statusDetails: `Message ID: ${data.message_id || 'N/A'}${IS_TRIAL_MODE ? ' (Trial mode)' : ''}`,
       userId
     });
 
@@ -204,11 +261,11 @@ const sendMailWithMailerSend = async ({
       subject,
       emailType,
       status: 'FAILED',
-      statusDetails: error instanceof Error ? error.message : 'Erro desconhecido',
+      statusDetails: `Exceção: ${(error as Error).message}`,
       userId
     });
 
-    // Fallback para Ethereal em caso de erro
+    // Fallback para Ethereal
     return sendMailWithEthereal({
       to_email,
       to_name,

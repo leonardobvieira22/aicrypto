@@ -15,10 +15,15 @@ Este projeto recebeu as seguintes correções para resolver problemas de execuç
 3. **Atualização dos tipos TypeScript**: Atualizados os tipos para garantir compatibilidade.
 
 Configure as variáveis de ambiente no console AWS Amplify:
-DATABASE_URL
+DATABASE_URL 	postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-pooler.us-east-2.aws.neon.tech/crypto_trading_db?sslmode=require 
 NEXTAUTH_SECRET
-NEXT_PUBLIC_BINANCE_API_KEY
-BINANCE_API_SECRET
+NEXT_PUBLIC_BINANCE_API_KEY 
+BINANCE_API_SECRET 	jHrPFutd2fQH2AECeABbG6mDvbJqhEYBt1kuYmiWfcBjJV22Fwtykqx8mDFle3dO
+
+
+MAILERSEND_API_TOKEN="mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9"
+EMAIL_FROM="noreply@test-dnvo4d9mxy6g5r86.mlsender.net"
+ADMIN_EMAIL="leonardobvieira22@gmail.com"
 
 ## Execução do Projeto
 
