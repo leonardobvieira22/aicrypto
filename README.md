@@ -14,6 +14,12 @@ Este projeto recebeu as seguintes correções para resolver problemas de execuç
 2. **Correção da configuração do NextAuth**: Simplificada a configuração para evitar problemas com o adaptador Prisma.
 3. **Atualização dos tipos TypeScript**: Atualizados os tipos para garantir compatibilidade.
 
+Configure as variáveis de ambiente no console AWS Amplify:
+DATABASE_URL
+NEXTAUTH_SECRET
+NEXT_PUBLIC_BINANCE_API_KEY
+BINANCE_API_SECRET
+
 ## Execução do Projeto
 
 ### Pré-requisitos

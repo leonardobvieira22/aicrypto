@@ -3,6 +3,8 @@ frontend:
   phases:
     preBuild:
       commands:
+        - git fetch --prune --unshallow
+        - git fetch --tags
         - npm install -g bun
         - echo "Verificando variáveis de ambiente necessárias..."
         - |
