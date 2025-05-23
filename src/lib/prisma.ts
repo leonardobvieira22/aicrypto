@@ -284,25 +284,7 @@ function getPrismaClient(): PrismaClient {
             db: {
               url: process.env.DATABASE_URL
             }
-          },
-          // Configurações específicas para AWS Lambda/Serverless
-          // @ts-ignore - Configurações avançadas do Prisma
-          __internal: {
-            hooks: {},
-            engine: {
-              // Configurações para ambiente serverless
-              connectionLimit: 1,
-              poolTimeout: 10,
-              requestTimeout: 30000,
-              maximumRetries: 3
-            }
           }
-        });
-
-        // Configurar event handlers para gerenciar conexões
-        globalForPrisma.prisma.$on('beforeExit', async () => {
-          console.log('🔌 [PRISMA] Disconnecting before Lambda exit');
-          await globalForPrisma.prisma?.$disconnect();
         });
 
         console.log('✅ [PRISMA] Prisma Client inicializado com sucesso para produção');
