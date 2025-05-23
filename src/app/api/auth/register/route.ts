@@ -277,7 +277,18 @@ export async function POST(req: NextRequest) {
 
     // Verificar se o usuário já existe pelo email
     console.log('🔍 [REGISTER] Verificando email existente...');
+    console.log('🔍 [REGISTER] Testando conexão Prisma...');
+    console.log('🔍 [REGISTER] DATABASE_URL presente:', !!process.env.DATABASE_URL);
+    console.log('🔍 [REGISTER] DATABASE_URL tipo:', process.env.DATABASE_URL?.substring(0, 20) + '...');
+    
     try {
+      // Primeiro, testar se o Prisma consegue se conectar
+      console.log('🔍 [REGISTER] Testando conexão básica do Prisma...');
+      await prisma.$connect();
+      console.log('✅ [REGISTER] Conexão Prisma estabelecida');
+      
+      // Agora tentar a consulta
+      console.log('🔍 [REGISTER] Executando consulta de email...');
       const existingEmail = await prisma.user.findUnique({
         where: { email: normalizedEmail },
       });
@@ -291,11 +302,46 @@ export async function POST(req: NextRequest) {
       }
       console.log('✅ [REGISTER] Email disponível');
     } catch (error: any) {
-      console.error('❌ [REGISTER] Erro ao verificar email existente:', error);
-      return NextResponse.json(
-        { message: 'Erro ao verificar email. Tente novamente.' },
-        { status: 500 }
-      );
+      console.error('❌ [REGISTER] Erro ao verificar email existente:', {
+        message: error.message,
+        code: error.code,
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n')
+      });
+      
+      // Se for erro de conexão, tentar reconectar
+      if (error.code === 'P1001' || error.message?.includes('connection')) {
+        console.log('🔄 [REGISTER] Tentando reconectar ao banco...');
+        try {
+          await prisma.$disconnect();
+          await prisma.$connect();
+          console.log('✅ [REGISTER] Reconexão bem-sucedida, tentando novamente...');
+          
+          const existingEmail = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+          });
+
+          if (existingEmail) {
+            console.log('❌ [REGISTER] Email já cadastrado (após reconexão)');
+            return NextResponse.json(
+              { message: 'Email já cadastrado' },
+              { status: 400 }
+            );
+          }
+          console.log('✅ [REGISTER] Email disponível (após reconexão)');
+        } catch (retryError: any) {
+          console.error('❌ [REGISTER] Erro na reconexão:', retryError.message);
+          return NextResponse.json(
+            { message: 'Erro de conexão com o banco de dados. Tente novamente em alguns instantes.' },
+            { status: 503 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { message: 'Erro ao verificar email. Tente novamente.' },
+          { status: 500 }
+        );
+      }
     }
 
     // Verificar se o CPF já está cadastrado
