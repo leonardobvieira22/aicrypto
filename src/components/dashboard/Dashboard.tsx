@@ -25,7 +25,8 @@ import {
   RefreshCw,
   Filter,
   Calendar,
-  MoreVertical
+  MoreVertical,
+  CandlestickChart
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -125,47 +126,85 @@ const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) 
   if (!data || data.length === 0) return null
 
   const lastCandle = data[data.length - 1]
-  const prevCandle = data.length > 1 ? data[data.length - 2] : null
-
-  const currentPrice = lastCandle.close.toFixed(2)
-  const priceChange = prevCandle ? (lastCandle.close - prevCandle.close).toFixed(2) : "0.00"
-  const priceChangePercent = prevCandle ? (((lastCandle.close - prevCandle.close) / prevCandle.close) * 100).toFixed(2) : "0.00"
-  const isPositive = Number.parseFloat(priceChange) >= 0
-
-  const formatVolume = (volume: number) => {
-    if (volume >= 1000000) return `${(volume / 1000000).toFixed(2)}M`
-    if (volume >= 1000) return `${(volume / 1000).toFixed(2)}K`
-    return volume.toFixed(2)
+  const currentPrice = lastCandle.close
+  
+  // Calcular variação de 24h baseado em dados reais
+  let priceChange24h = 0
+  let priceChangePercent24h = 0
+  let price24hAgo = currentPrice
+  
+  if (data.length > 1) {
+    // Tentar encontrar o candle de 24h atrás baseado no timestamp
+    const now = lastCandle.time as number
+    const twentyFourHoursAgo = now - (24 * 60 * 60) // 24 horas em segundos
+    
+    // Encontrar o candle mais próximo de 24h atrás
+    let closestCandle = data[0]
+    let closestTimeDiff = Math.abs((closestCandle.time as number) - twentyFourHoursAgo)
+    
+    for (const candle of data) {
+      const timeDiff = Math.abs((candle.time as number) - twentyFourHoursAgo)
+      if (timeDiff < closestTimeDiff) {
+        closestTimeDiff = timeDiff
+        closestCandle = candle
+      }
+    }
+    
+    price24hAgo = closestCandle.close
+    priceChange24h = currentPrice - price24hAgo
+    priceChangePercent24h = ((priceChange24h / price24hAgo) * 100)
   }
+  
+  const isPositive = priceChange24h >= 0
+
+  // Calcular máxima e mínima das últimas 24h (usar dados recentes)
+  const recentData = data.slice(-Math.min(data.length, 288)) // Últimas 288 velas (24h para intervalo de 5min)
+  const high24h = Math.max(...recentData.map(candle => candle.high))
+  const low24h = Math.min(...recentData.map(candle => candle.low))
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <span className="text-xs text-gray-400 font-medium">Preço Atual</span>
-        <div className="text-xl font-bold text-white mt-1">${currentPrice}</div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+      {/* Preço Atual */}
+      <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-400 font-medium">Preço Atual</span>
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+        </div>
+        <div className="text-2xl font-bold text-white">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
       </div>
 
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <span className="text-xs text-gray-400 font-medium">Variação 24h</span>
-        <div className={`text-xl font-bold mt-1 flex items-center ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-          {isPositive ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
-          {isPositive ? '+' : ''}{priceChangePercent}%
+      {/* Variação 24h */}
+      <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-400 font-medium">Variação 24h</span>
+          {isPositive ? <TrendingUp className="h-3 w-3 text-green-400" /> : <TrendingDown className="h-3 w-3 text-red-400" />}
+        </div>
+        <div className="flex flex-col">
+          <div className={`text-2xl font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+            {isPositive ? '+' : ''}{priceChangePercent24h.toFixed(2)}%
+          </div>
+          <div className={`text-sm ${isPositive ? 'text-green-400/70' : 'text-red-400/70'}`}>
+            {isPositive ? '+' : ''}${priceChange24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
         </div>
       </div>
 
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <span className="text-xs text-gray-400 font-medium">Máxima 24h</span>
-        <div className="text-xl font-bold text-white mt-1">${lastCandle.high.toFixed(2)}</div>
+      {/* Máxima 24h */}
+      <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-400 font-medium">Máxima 24h</span>
+          <div className="w-2 h-2 rounded-full bg-green-400/50"></div>
+        </div>
+        <div className="text-2xl font-bold text-white">${high24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
       </div>
 
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <span className="text-xs text-gray-400 font-medium">Mínima 24h</span>
-        <div className="text-xl font-bold text-white mt-1">${lastCandle.low.toFixed(2)}</div>
-      </div>
-
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <span className="text-xs text-gray-400 font-medium">Volume 24h</span>
-        <div className="text-xl font-bold text-white mt-1">{formatVolume(lastCandle.volume)}</div>
+      {/* Mínima 24h */}
+      <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-400 font-medium">Mínima 24h</span>
+          <div className="w-2 h-2 rounded-full bg-red-400/50"></div>
+        </div>
+        <div className="text-2xl font-bold text-white">${low24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
       </div>
     </div>
   )
@@ -203,7 +242,16 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
     setError(null)
 
     try {
-      const klineData = await binanceService.getKlines(selectedSymbol, selectedInterval, 100)
+      // Buscar mais dados para cálculos precisos de 24h
+      const limit = selectedInterval === '1m' ? 1440 : // 24h em minutos
+                    selectedInterval === '5m' ? 288 :  // 24h em 5min
+                    selectedInterval === '15m' ? 96 :  // 24h em 15min
+                    selectedInterval === '1h' ? 24 :   // 24h em horas
+                    selectedInterval === '4h' ? 6 :    // 24h em 4h
+                    selectedInterval === '1d' ? 30 :   // 30 dias
+                    200
+
+      const klineData = await binanceService.getKlines(selectedSymbol, selectedInterval, limit)
       const candlestickData = formatCandlestickData(klineData)
 
       seriesRef.current.setData(candlestickData)
@@ -300,14 +348,24 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
         horzLines: { color: 'rgba(55, 65, 81, 0.2)' },
       },
       width: chartContainerRef.current.clientWidth,
-      height: 400,
+      height: 450,
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: 'rgba(55, 65, 81, 0.5)',
+        borderColor: 'rgba(55, 65, 81, 0.3)',
       },
       crosshair: {
         mode: 1,
+        vertLine: {
+          color: 'rgba(99, 102, 241, 0.5)',
+          width: 1,
+          style: 2,
+        },
+        horzLine: {
+          color: 'rgba(99, 102, 241, 0.5)',
+          width: 1,
+          style: 2,
+        },
       },
     })
 
@@ -351,7 +409,7 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
 
   if (isLoading && !seriesRef.current) {
     return (
-      <div ref={chartContainerRef} className="w-full h-[400px] flex items-center justify-center bg-gray-900/50 rounded-xl border border-gray-700/50">
+      <div ref={chartContainerRef} className="w-full h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
         <div className="flex flex-col items-center">
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
           <p className="mt-2 text-gray-400">Carregando dados do gráfico...</p>
@@ -362,7 +420,7 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
 
   if (error) {
     return (
-      <div ref={chartContainerRef} className="w-full h-[400px] flex items-center justify-center bg-gray-900/50 rounded-xl border border-gray-700/50">
+      <div ref={chartContainerRef} className="w-full h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
         <div className="flex flex-col items-center text-center">
           <span className="text-red-400 text-4xl mb-2">!</span>
           <p className="text-red-400 mb-4">{error}</p>
@@ -381,8 +439,8 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
 
   return (
     <div>
-      <div ref={chartContainerRef} className="w-full h-[400px] bg-gray-900/30 rounded-xl border border-gray-700/50 p-4" />
-      {!isLoading && !error && <div className="mt-4"><PriceMetrics data={candleData} symbol={selectedSymbol} /></div>}
+      <div ref={chartContainerRef} className="w-full h-[450px] bg-gradient-to-br from-gray-900/20 to-gray-800/20 rounded-2xl border border-gray-700/20 backdrop-blur-sm" />
+      {!isLoading && !error && <PriceMetrics data={candleData} symbol={selectedSymbol} />}
     </div>
   )
 }
@@ -600,42 +658,65 @@ export default function Dashboard() {
           transition={{ delay: 0.5 }}
           className="xl:col-span-2"
         >
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl border border-gray-700/50 p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4">
-              <div>
-                <div className="flex items-center space-x-3">
-                  <h2 className="text-xl font-bold text-white">
-                    {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
-                  </h2>
+          <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
+            {/* Cabeçalho do Gráfico */}
+            <div className="flex flex-col space-y-4 p-6 border-b border-gray-700/30">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <CandlestickChart className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
+                      </h2>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                        <span className="text-xs text-gray-400">Dados em tempo real</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-400 text-sm">Dados em tempo real</p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-                <select
-                  className="w-full sm:w-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedPair}
-                  onChange={(e) => setSelectedPair(e.target.value)}
-                >
-                  {tradingPairs.map((pair) => (
-                    <option key={pair.value} value={pair.value}>
-                      {pair.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="w-full sm:w-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedInterval}
-                  onChange={(e) => setSelectedInterval(e.target.value)}
-                >
-                  {timeIntervals.map((interval) => (
-                    <option key={interval.value} value={interval.value}>
-                      {interval.label}
-                    </option>
-                  ))}
-                </select>
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-400 font-medium">Par:</span>
+                    <select
+                      className="bg-gray-800/60 border border-gray-600/50 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      value={selectedPair}
+                      onChange={(e) => setSelectedPair(e.target.value)}
+                    >
+                      {tradingPairs.map((pair) => (
+                        <option key={pair.value} value={pair.value}>
+                          {pair.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-400 font-medium">Intervalo:</span>
+                    <select
+                      className="bg-gray-800/60 border border-gray-600/50 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      value={selectedInterval}
+                      onChange={(e) => setSelectedInterval(e.target.value)}
+                    >
+                      {timeIntervals.map((interval) => (
+                        <option key={interval.value} value={interval.value}>
+                          {interval.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
-            <TradingChart symbol={selectedPair} interval={selectedInterval} />
+
+            {/* Área do Gráfico */}
+            <div className="p-6">
+              <TradingChart symbol={selectedPair} interval={selectedInterval} />
+            </div>
           </div>
         </motion.div>
 
