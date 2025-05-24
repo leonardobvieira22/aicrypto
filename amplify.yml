@@ -59,6 +59,13 @@ frontend:
             bun install --frozen-lockfile || npm ci
           fi
         
+        - echo "📝 Gerando arquivo .env.production a partir das variáveis de ambiente do Amplify"
+        # Exporta variáveis privadas e públicas que devem estar disponíveis em runtime (SSR e API Routes)
+        - |
+          env | grep -E '^(DATABASE_URL|NEXTAUTH_URL|NEXTAUTH_SECRET|JWT_SECRET|MAILERSEND_API_TOKEN|ADMIN_EMAIL|BINANCE_API_KEY|BINANCE_API_SECRET|NEXT_PUBLIC_)' >> .env.production
+        - echo "📄 Conteúdo final de .env.production:"
+        - cat .env.production
+        
         - echo "✅ preBuild concluído com sucesso!"
         
     build:
