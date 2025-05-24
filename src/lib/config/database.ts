@@ -23,21 +23,16 @@ function validateEnvironment() {
 
 // Configuração do Prisma Client
 function getDatabaseConfig() {
+  // ATENÇÃO: Limite de conexões deve ser feito na string DATABASE_URL, não aqui!
+  // Exemplo: postgresql://user:pass@host:port/db?connection_limit=1
   return {
     log: isDevelopment ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
         url: process.env.DATABASE_URL
       }
-    },
-    // Configurações de conexão para AWS Lambda
-    ...(isAWSLambda && {
-      connectionLimit: 1,
-      pool: {
-        min: 0,
-        max: 1
-      }
-    })
+    }
+    // NÃO adicionar connectionLimit ou pool aqui!
   }
 }
 
