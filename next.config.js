@@ -14,6 +14,7 @@ const nextConfig = {
     JWT_SECRET: process.env.JWT_SECRET,
     MAILERSEND_API_TOKEN: process.env.MAILERSEND_API_TOKEN,
     ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    GROK_API_KEY: process.env.GROK_API_KEY,
   },
   
   // Configuração de imagens otimizada

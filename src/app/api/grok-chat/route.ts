@@ -28,14 +28,24 @@ interface GrokChatResponse {
 }
 
 // Chave da API Grok - DEVE vir das variáveis de ambiente por segurança
-const GROK_API_KEY = process.env.GROK_API_KEY
+// Tentativas múltiplas de leitura para AWS Amplify
+const GROK_API_KEY = process.env.GROK_API_KEY || 
+                     process.env.NEXT_GROK_API_KEY ||
+                     process.env.AWS_GROK_API_KEY ||
+                     null
+
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions'
 
 // Debug log para AWS Amplify
 console.log('🔍 [GROK DEBUG] Verificando variáveis de ambiente...')
-console.log('🔍 [GROK DEBUG] GROK_API_KEY presente:', !!GROK_API_KEY)
+console.log('🔍 [GROK DEBUG] process.env.GROK_API_KEY presente:', !!process.env.GROK_API_KEY)
+console.log('🔍 [GROK DEBUG] process.env.NEXT_GROK_API_KEY presente:', !!process.env.NEXT_GROK_API_KEY)
+console.log('🔍 [GROK DEBUG] process.env.AWS_GROK_API_KEY presente:', !!process.env.AWS_GROK_API_KEY)
+console.log('🔍 [GROK DEBUG] GROK_API_KEY final presente:', !!GROK_API_KEY)
 console.log('🔍 [GROK DEBUG] GROK_API_KEY length:', GROK_API_KEY?.length || 0)
 console.log('🔍 [GROK DEBUG] NODE_ENV:', process.env.NODE_ENV)
+console.log('🔍 [GROK DEBUG] AWS_AMPLIFY_BUILD:', process.env.AWS_AMPLIFY_BUILD)
+console.log('🔍 [GROK DEBUG] Todas as env vars com GROK:', Object.keys(process.env).filter(k => k.includes('GROK')))
 
 export async function POST(request: NextRequest) {
   try {

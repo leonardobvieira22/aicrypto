@@ -6,6 +6,15 @@ export async function GET(request: NextRequest) {
   const debugInfo = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
+    platform: process.platform,
+    nodeVersion: process.version,
+    nextJsInfo: {
+      // Verifica se estamos no ambiente Next.js correto
+      isServer: typeof window === 'undefined',
+      hasNextConfig: !!process.env.NEXT_CONFIG,
+      nextPhase: process.env.NEXT_PHASE,
+      amplifyBuild: process.env.AWS_AMPLIFY_BUILD,
+    },
     variables: {
       // Variáveis que devem estar presentes
       hasGrokApiKey: !!process.env.GROK_API_KEY,
@@ -16,14 +25,32 @@ export async function GET(request: NextRequest) {
       hasNextAuthUrl: !!process.env.NEXTAUTH_URL,
       hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
       hasDatabaseUrl: !!process.env.DATABASE_URL,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      hasBinanceSecret: !!process.env.BINANCE_API_SECRET,
+      hasMailerSend: !!process.env.MAILERSEND_API_TOKEN,
       
       // Lista todas as variáveis que contêm 'GROK'
       allGrokVars: Object.keys(process.env).filter(key => 
         key.toLowerCase().includes('grok')
       ),
       
+      // Lista todas as variáveis que começam com 'NEXT'
+      allNextVars: Object.keys(process.env).filter(key => 
+        key.startsWith('NEXT')
+      ),
+      
+      // Lista todas as variáveis que começam com 'AWS'
+      allAwsVars: Object.keys(process.env).filter(key => 
+        key.startsWith('AWS')
+      ),
+      
       // Total de variáveis de ambiente
       totalEnvVars: Object.keys(process.env).length
+    },
+    // Informações sobre arquivos de configuração
+    configFiles: {
+      hasEnvProduction: process.env.NODE_ENV === 'production' ? 'N/A (runtime check)' : false,
+      hasEnvLocal: process.env.NODE_ENV === 'development' ? 'N/A (runtime check)' : false,
     }
   }
 

@@ -27,6 +27,7 @@ frontend:
           echo "NEXT_PUBLIC_BINANCE_API_KEY: ${NEXT_PUBLIC_BINANCE_API_KEY:0:10}..."
           echo "MAILERSEND_API_TOKEN: ${MAILERSEND_API_TOKEN:0:10}..."
           echo "JWT_SECRET: ${JWT_SECRET:0:10}..."
+          echo "GROK_API_KEY: ${GROK_API_KEY:0:10}..."
           echo "============================================="
         
         # Configurar NEXTAUTH_URL automaticamente se não estiver definida
@@ -68,6 +69,13 @@ frontend:
           else
             echo "✅ JWT_SECRET configurada"
           fi
+        - |
+          if [ -z "$GROK_API_KEY" ]; then
+            echo "❌ ERRO CRÍTICO: GROK_API_KEY não configurada"
+            exit 1
+          else
+            echo "✅ GROK_API_KEY configurada"
+          fi
         
         # Criar arquivo .env.production com todas as variáveis necessárias
         - echo "📝 Criando arquivo .env.production..."
@@ -93,6 +101,9 @@ frontend:
           # Binance API
           NEXT_PUBLIC_BINANCE_API_KEY=$NEXT_PUBLIC_BINANCE_API_KEY
           BINANCE_API_SECRET=$BINANCE_API_SECRET
+          
+          # Grok AI API
+          GROK_API_KEY=$GROK_API_KEY
           
           # URLs Públicas
           NEXT_PUBLIC_APP_URL=$NEXTAUTH_URL

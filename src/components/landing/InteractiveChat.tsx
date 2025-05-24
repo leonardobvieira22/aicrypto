@@ -468,8 +468,8 @@ export function InteractiveChat() {
       </div>
 
       {/* Input Área Premium */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 bg-white/80 backdrop-blur-lg border-t border-gray-200/50">
-        <div className="flex items-end gap-3 lg:gap-4">
+      <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-6 bg-white/80 backdrop-blur-lg border-t border-gray-200/50">
+        <div className="flex items-end gap-2 lg:gap-4">
           <div className="flex-1 relative">
             <input
               ref={inputRef}
@@ -478,13 +478,13 @@ export function InteractiveChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Digite sua pergunta sobre crypto trading..."
-              className="w-full px-4 py-3 lg:px-5 lg:py-4 text-sm lg:text-base text-gray-800 bg-white/90 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5957D5]/50 focus:border-[#5957D5]/50 transition-all duration-200 shadow-sm placeholder:text-gray-400"
+              className="w-full px-3 py-3 lg:px-5 lg:py-4 text-sm lg:text-base text-gray-800 bg-white/90 border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5957D5]/50 focus:border-[#5957D5]/50 transition-all duration-200 shadow-sm placeholder:text-gray-400 pr-12 lg:pr-16"
               disabled={isLoading}
               maxLength={1000}
             />
             
-            {/* Contador de caracteres */}
-            <div className="absolute bottom-1 right-3 text-xs text-gray-400">
+            {/* Contador de caracteres - apenas desktop */}
+            <div className="hidden lg:block absolute bottom-1 right-3 text-xs text-gray-400">
               {input.length}/1000
             </div>
           </div>
@@ -494,7 +494,7 @@ export function InteractiveChat() {
             <button
               onClick={toggleVoice}
               disabled={isLoading}
-              className={`p-3 lg:p-4 rounded-xl transition-all duration-200 border ${
+              className={`p-2.5 lg:p-4 rounded-xl transition-all duration-200 border ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse'
                   : 'bg-white/90 hover:bg-gray-50 text-gray-600 border-gray-200/50 hover:border-gray-300'
@@ -508,7 +508,7 @@ export function InteractiveChat() {
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading}
-              className="p-3 lg:p-4 bg-gradient-to-r from-[#5957D5] to-[#7C3AED] hover:from-[#4F4EC0] hover:to-[#6D28D9] disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 disabled:hover:scale-100 border border-purple-200/30"
+              className="p-2.5 lg:p-4 bg-gradient-to-r from-[#5957D5] to-[#7C3AED] hover:from-[#4F4EC0] hover:to-[#6D28D9] disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 disabled:hover:scale-100 border border-purple-200/30"
               title="Enviar mensagem"
             >
               {isLoading ? (
@@ -520,18 +520,23 @@ export function InteractiveChat() {
           </div>
         </div>
 
-        {/* Status Bar */}
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-          <div className="flex items-center gap-4">
+        {/* Status Bar Otimizado */}
+        <div className="flex items-center justify-between mt-2 lg:mt-3 text-xs text-gray-500">
+          <div className="flex items-center gap-2 lg:gap-4">
             <span className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : 'bg-red-400'}`} />
-              {connectionStatus === 'online' ? 'Conectado' : 'Desconectado'}
+              <span className="hidden sm:inline">
+                {connectionStatus === 'online' ? 'Conectado' : 'Desconectado'}
+              </span>
+              <span className="sm:hidden">
+                {connectionStatus === 'online' ? '●' : '○'}
+              </span>
             </span>
-            <span>Pressione Enter para enviar</span>
+            <span className="hidden md:inline">Pressione Enter para enviar</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span>Powered by AI Crypto</span>
+          <div className="flex items-center gap-1 lg:gap-2">
+            <span className="text-[10px] lg:text-xs">AI Crypto</span>
             <Zap className="w-3 h-3 text-yellow-500" />
           </div>
         </div>
