@@ -127,14 +127,15 @@ export function validateRegisterData(data: any): ValidationResult<RegisterInput>
     errors.push('CPF inválido')
   }
   
-  // Validação da data de nascimento
-  if (!data.birthDate || typeof data.birthDate !== 'string') {
+  // Validação da data de nascimento (aceitar ambos os formatos)
+  const birthDateField = data.birthDate || data.dateOfBirth
+  if (!birthDateField || typeof birthDateField !== 'string') {
     errors.push('Data de nascimento é obrigatória')
   } else {
-    const parsedDate = new Date(data.birthDate)
+    const parsedDate = new Date(birthDateField)
     if (isNaN(parsedDate.getTime()) || parsedDate >= new Date()) {
       errors.push('Data de nascimento inválida')
-    } else if (!validateAge(data.birthDate)) {
+    } else if (!validateAge(birthDateField)) {
       errors.push('Você deve ter pelo menos 18 anos')
     }
   }
@@ -144,8 +145,9 @@ export function validateRegisterData(data: any): ValidationResult<RegisterInput>
     errors.push('Telefone deve estar no formato (XX) XXXXX-XXXX')
   }
   
-  // Validação dos termos
-  if (!data.acceptTerms || data.acceptTerms !== true) {
+  // Validação dos termos (aceitar ambos os formatos)
+  const termsAccepted = data.acceptTerms || data.termsAccepted
+  if (!termsAccepted || termsAccepted !== true) {
     errors.push('Você deve aceitar os termos de uso')
   }
   
@@ -160,9 +162,9 @@ export function validateRegisterData(data: any): ValidationResult<RegisterInput>
       email: data.email.toLowerCase().trim(),
       password: data.password,
       cpf: data.cpf.replace(/\D/g, ''),
-      birthDate: data.birthDate,
+      birthDate: birthDateField,
       phone: data.phone?.trim(),
-      acceptTerms: data.acceptTerms
+      acceptTerms: termsAccepted
     }
   }
 }

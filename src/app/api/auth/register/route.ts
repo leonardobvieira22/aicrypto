@@ -4,10 +4,43 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash, randomBytes, pbkdf2Sync } from 'crypto'
-import { prisma, testDatabaseConnection } from '@/lib/config/database'
-import { validateRegisterData, sanitizeInput } from '@/lib/validation/auth'
-import { sendVerificationEmail, sendWelcomeEmail } from '@/lib/services/email'
+import { randomBytes, pbkdf2Sync } from 'crypto'
+
+// Importações seguras
+let prisma: any = null
+let testDatabaseConnection: any = null
+let validateRegisterData: any = null
+let sanitizeInput: any = null
+let sendVerificationEmail: any = null
+let sendWelcomeEmail: any = null
+
+// Função para carregar dependências de forma segura
+const loadDependencies = () => {
+  try {
+    if (!prisma) {
+      const dbModule = require('@/lib/config/database')
+      prisma = dbModule.prisma
+      testDatabaseConnection = dbModule.testDatabaseConnection
+    }
+    
+    if (!validateRegisterData) {
+      const validationModule = require('@/lib/validation/auth')
+      validateRegisterData = validationModule.validateRegisterData
+      sanitizeInput = validationModule.sanitizeInput
+    }
+    
+    if (!sendVerificationEmail) {
+      const emailModule = require('@/lib/services/email')
+      sendVerificationEmail = emailModule.sendVerificationEmail
+      sendWelcomeEmail = emailModule.sendWelcomeEmail
+    }
+    
+    return true
+  } catch (error) {
+    console.error('[REGISTER] Erro ao carregar dependências:', error)
+    return false
+  }
+}
 
 // Configurações
 const PBKDF2_ITERATIONS = 100000
@@ -44,6 +77,8 @@ function createVerificationUrl(token: string): string {
 // Função para verificar se email já existe
 async function checkEmailExists(email: string): Promise<boolean> {
   try {
+    if (!prisma) return false
+    
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true }
@@ -58,6 +93,8 @@ async function checkEmailExists(email: string): Promise<boolean> {
 // Função para verificar se CPF já existe
 async function checkCpfExists(cpf: string): Promise<boolean> {
   try {
+    if (!prisma) return false
+    
     const user = await prisma.user.findUnique({
       where: { cpf },
       select: { id: true }
@@ -72,6 +109,11 @@ async function checkCpfExists(cpf: string): Promise<boolean> {
 // Função para criar configurações padrão do usuário
 async function createUserDefaults(userId: string): Promise<void> {
   try {
+    if (!prisma) {
+      console.log('⚠️ [REGISTER] Prisma não disponível para criar configurações padrão')
+      return
+    }
+    
     console.log(`🔧 [REGISTER] Criando configurações padrão para usuário: ${userId}`)
     
     // Criar configurações de trading
@@ -120,6 +162,10 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
   const { name, email, password, cpf, birthDate, phone } = validatedData
   
   console.log(`👤 [REGISTER] Iniciando registro para: ${email}`)
+  
+  if (!prisma) {
+    throw new Error('Banco de dados não disponível')
+  }
   
   // Hash da senha
   const hashedPassword = hashPassword(password)
@@ -171,6 +217,11 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
 // Função para enviar emails em background
 async function sendRegistrationEmails(email: string, name: string, verificationToken: string): Promise<void> {
   try {
+    if (!sendVerificationEmail || !sendWelcomeEmail) {
+      console.log('⚠️ [REGISTER] Serviços de email não disponíveis')
+      return
+    }
+    
     const verificationUrl = createVerificationUrl(verificationToken)
     
     console.log(`📧 [REGISTER] Enviando emails para: ${email}`)
@@ -207,23 +258,53 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
   try {
     console.log('🚀 [REGISTER] Iniciando processo de registro')
     
-    // Testar conexão com banco
-    const dbConnected = await testDatabaseConnection()
-    if (!dbConnected) {
-      console.error('❌ [REGISTER] Falha na conexão com banco de dados')
+    // Carregar dependências
+    const dependenciesLoaded = loadDependencies()
+    if (!dependenciesLoaded) {
+      console.error('❌ [REGISTER] Falha ao carregar dependências')
       return NextResponse.json({
         success: false,
         message: 'Erro interno do servidor. Tente novamente.'
       }, { status: 500 })
     }
     
+    // Testar conexão com banco
+    if (testDatabaseConnection) {
+      const dbConnected = await testDatabaseConnection()
+      if (!dbConnected) {
+        console.error('❌ [REGISTER] Falha na conexão com banco de dados')
+        return NextResponse.json({
+          success: false,
+          message: 'Erro interno do servidor. Tente novamente.'
+        }, { status: 500 })
+      }
+    }
+    
     // Obter e sanitizar dados da requisição
-    const rawData = await request.json()
-    const sanitizedData = sanitizeInput(rawData)
+    let rawData: any
+    try {
+      rawData = await request.json()
+    } catch (error) {
+      console.error('❌ [REGISTER] Erro ao parsear JSON:', error)
+      return NextResponse.json({
+        success: false,
+        message: 'Dados inválidos na requisição'
+      }, { status: 400 })
+    }
+    
+    const sanitizedData = sanitizeInput ? sanitizeInput(rawData) : rawData
     
     console.log('📝 [REGISTER] Dados recebidos e sanitizados')
     
     // Validar dados
+    if (!validateRegisterData) {
+      console.error('❌ [REGISTER] Função de validação não disponível')
+      return NextResponse.json({
+        success: false,
+        message: 'Erro interno do servidor. Tente novamente.'
+      }, { status: 500 })
+    }
+    
     const validation = validateRegisterData(sanitizedData)
     if (!validation.success) {
       console.log('❌ [REGISTER] Dados inválidos:', validation.errors)
@@ -293,6 +374,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
           success: false,
           message: 'Email ou CPF já cadastrado'
         }, { status: 409 })
+      }
+      
+      if (error.message.includes('Banco de dados não disponível')) {
+        return NextResponse.json({
+          success: false,
+          message: 'Serviço temporariamente indisponível. Tente novamente.'
+        }, { status: 503 })
       }
     }
     
