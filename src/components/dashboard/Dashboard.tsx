@@ -162,49 +162,88 @@ const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) 
   const high24h = Math.max(...recentData.map(candle => candle.high))
   const low24h = Math.min(...recentData.map(candle => candle.low))
 
+  // Função para formatar valores de forma inteligente
+  const formatPrice = (price: number) => {
+    if (price >= 1000000) {
+      return `$${(price / 1000000).toFixed(2)}M`
+    } else if (price >= 1000) {
+      return `$${(price / 1000).toFixed(1)}K`
+    } else if (price >= 100) {
+      return `$${price.toFixed(2)}`
+    } else if (price >= 1) {
+      return `$${price.toFixed(4)}`
+    } else {
+      return `$${price.toFixed(6)}`
+    }
+  }
+
+  const formatChange = (change: number) => {
+    if (Math.abs(change) >= 1000000) {
+      return `${(change / 1000000).toFixed(2)}M`
+    } else if (Math.abs(change) >= 1000) {
+      return `${(change / 1000).toFixed(1)}K`
+    } else if (Math.abs(change) >= 100) {
+      return change.toFixed(2)
+    } else {
+      return change.toFixed(4)
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
       {/* Preço Atual */}
       <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400 font-medium">Preço Atual</span>
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
         </div>
-        <div className="text-2xl font-bold text-white">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="min-h-[2rem] flex items-center">
+          <div className="text-lg lg:text-xl xl:text-2xl font-bold text-white break-all leading-tight">
+            {formatPrice(currentPrice)}
+          </div>
+        </div>
       </div>
 
       {/* Variação 24h */}
       <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400 font-medium">Variação 24h</span>
           {isPositive ? <TrendingUp className="h-3 w-3 text-green-400" /> : <TrendingDown className="h-3 w-3 text-red-400" />}
         </div>
-        <div className="flex flex-col">
-          <div className={`text-2xl font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="min-h-[2rem] flex flex-col justify-center">
+          <div className={`text-lg lg:text-xl xl:text-2xl font-bold leading-tight ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
             {isPositive ? '+' : ''}{priceChangePercent24h.toFixed(2)}%
           </div>
-          <div className={`text-sm ${isPositive ? 'text-green-400/70' : 'text-red-400/70'}`}>
-            {isPositive ? '+' : ''}${priceChange24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className={`text-xs mt-1 ${isPositive ? 'text-green-400/70' : 'text-red-400/70'}`}>
+            {isPositive ? '+' : ''}${formatChange(priceChange24h)}
           </div>
         </div>
       </div>
 
       {/* Máxima 24h */}
       <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400 font-medium">Máxima 24h</span>
           <div className="w-2 h-2 rounded-full bg-green-400/50"></div>
         </div>
-        <div className="text-2xl font-bold text-white">${high24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="min-h-[2rem] flex items-center">
+          <div className="text-lg lg:text-xl xl:text-2xl font-bold text-white break-all leading-tight">
+            {formatPrice(high24h)}
+          </div>
+        </div>
       </div>
 
       {/* Mínima 24h */}
       <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-4 border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400 font-medium">Mínima 24h</span>
           <div className="w-2 h-2 rounded-full bg-red-400/50"></div>
         </div>
-        <div className="text-2xl font-bold text-white">${low24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="min-h-[2rem] flex items-center">
+          <div className="text-lg lg:text-xl xl:text-2xl font-bold text-white break-all leading-tight">
+            {formatPrice(low24h)}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -661,8 +700,9 @@ export default function Dashboard() {
           <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
             {/* Cabeçalho do Gráfico */}
             <div className="flex flex-col space-y-4 p-6 border-b border-gray-700/30">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex items-center space-x-4">
+              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                {/* Seção Principal do Título */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                       <CandlestickChart className="h-5 w-5 text-white" />
@@ -677,8 +717,21 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Info adicional - Desktop */}
+                  <div className="hidden lg:flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 bg-gray-800/40 rounded-lg px-3 py-2">
+                      <Eye className="h-4 w-4 text-blue-400" />
+                      <span className="text-xs text-gray-300">Análise Técnica</span>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-800/40 rounded-lg px-3 py-2">
+                      <RefreshCw className="h-4 w-4 text-green-400" />
+                      <span className="text-xs text-gray-300">Atualizado agora</span>
+                    </div>
+                  </div>
                 </div>
                 
+                {/* Controles */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-400 font-medium">Par:</span>
@@ -709,6 +762,15 @@ export default function Dashboard() {
                       ))}
                     </select>
                   </div>
+
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Configurar</span>
+                  </Button>
                 </div>
               </div>
             </div>
