@@ -1,25 +1,26 @@
 # Configuração de Ambiente para Build AWS Amplify
+# ⚠️ ESTE ARQUIVO É APENAS UM TEMPLATE - NÃO CONTÉM CREDENCIAIS REAIS
 
-# Banco de Dados PostgreSQL (Neon)
-DATABASE_URL="postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-pooler.us-east-2.aws.neon.tech/crypto_trading_db?sslmode=require"
+# Banco de Dados PostgreSQL
+DATABASE_URL="postgresql://usuario:senha@host:porta/banco?sslmode=require"
 
 # NextAuth.js
-NEXTAUTH_URL="https://main.d34l4lklofiz4e.amplifyapp.com"
-NEXTAUTH_SECRET="crypto-trading-secret-key-2024-production"
+NEXTAUTH_URL="https://seu-app.amplifyapp.com"
+NEXTAUTH_SECRET="sua-chave-secreta-super-segura-de-32-caracteres-ou-mais"
 
 # MailerSend (Email)
-MAILERSEND_API_TOKEN="mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9"
-MAILERSEND_DOMAIN="test-dnvo4d9mxy6g5r86.mlsender.net"
-EMAIL_FROM="noreply@test-dnvo4d9mxy6g5r86.mlsender.net"
-ADMIN_EMAIL="leonardobvieira22@gmail.com"
+MAILERSEND_API_TOKEN="seu-token-mailersend-aqui"
+MAILERSEND_DOMAIN="seu-dominio-verificado.mlsender.net"
+EMAIL_FROM="noreply@seu-dominio-verificado.mlsender.net"
+ADMIN_EMAIL="seu-email@exemplo.com"
 
-# Binance API
-NEXT_PUBLIC_BINANCE_API_KEY="VGQ0dhdCcH..."
-BINANCE_API_SECRET="your-binance-secret-here"
+# Binance API (opcional)
+NEXT_PUBLIC_BINANCE_API_KEY="sua-binance-api-key"
+BINANCE_API_SECRET="sua-binance-secret-key"
 
 # Ambiente
 NODE_ENV="production"
-NEXT_PUBLIC_APP_URL="https://main.d34l4lklofiz4e.amplifyapp.com"
+NEXT_PUBLIC_APP_URL="https://seu-app.amplifyapp.com"
 
 # Amplify Build
 AWS_AMPLIFY_BUILD="true"
@@ -27,3 +28,8 @@ AMPLIFY_BUILD="true"
 
 # Desabilitar telemetria Next.js durante build
 NEXT_TELEMETRY_DISABLED="1"
+
+# ⚠️ IMPORTANTE:
+# - Nunca commite credenciais reais
+# - Configure valores reais apenas nas variáveis de ambiente do AWS Amplify
+# - Mantenha este arquivo como template apenas

@@ -118,6 +118,19 @@ MAILERSEND_DOMAIN="test-dnvo4d9mxy6g5r86.mlsender.net"
 - Disponível apenas em desenvolvimento
 - Útil para diagnosticar problemas
 
+### 4. Configuração de Email MailerSend
+
+Configurar variáveis de ambiente no AWS Amplify:
+
+```bash
+MAILERSEND_API_TOKEN=seu-token-mailersend-aqui
+MAILERSEND_DOMAIN=seu-dominio-verificado.mlsender.net
+EMAIL_FROM=noreply@seu-dominio-verificado.mlsender.net
+ADMIN_EMAIL=seu-email@exemplo.com
+```
+
+**⚠️ SEGURANÇA:** Nunca exponha tokens reais em documentação pública!
+
 ## Status das Correções
 
 ### ✅ Completamente Corrigido

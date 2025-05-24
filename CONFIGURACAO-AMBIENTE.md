@@ -10,13 +10,15 @@ DATABASE_URL=postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-
 ### NextAuth.js
 ```
 NEXTAUTH_URL=https://main.d34l4lklofiz4e.amplifyapp.com
-NEXTAUTH_SECRET=your-secret-key-here
+NEXTAUTH_SECRET=sua-chave-secreta-super-segura-aqui
 ```
 
 ### MailerSend (Email)
 ```
-MAILERSEND_API_TOKEN=mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9
-MAILERSEND_DOMAIN=test-dnvo4d9mxy6g5r86.mlsender.net
+MAILERSEND_API_TOKEN=seu-token-mailersend-aqui
+MAILERSEND_DOMAIN=seu-dominio-verificado.mlsender.net
+EMAIL_FROM=noreply@seu-dominio-verificado.mlsender.net
+ADMIN_EMAIL=seu-email@exemplo.com
 ```
 
 ### Binance API
@@ -113,3 +115,9 @@ O sistema foi completamente reconstruído com:
 - Métricas de performance no Amplify
 - Logs de email com provider usado
 - Logs de tentativas de login/registro 
+
+### ⚠️ **SEGURANÇA CRÍTICA:**
+- **NUNCA** commite arquivos `.env` no repositório
+- Sempre use placeholders em documentação pública
+- Configure tokens reais apenas no ambiente de produção
+- Mantenha `.env` no `.gitignore` 

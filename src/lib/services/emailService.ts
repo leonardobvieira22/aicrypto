@@ -50,7 +50,7 @@ interface EmailTrackingParams {
 }
 
 // Configurações do MailerSend
-const MAILERSEND_API_TOKEN = process.env.MAILERSEND_API_TOKEN || 'mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9';
+const MAILERSEND_API_TOKEN = process.env.MAILERSEND_API_TOKEN;
 const MAILERSEND_API_URL = 'https://api.mailersend.com/v1/email';
 
 // Usar o domínio verificado correto do trial

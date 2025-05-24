@@ -12,14 +12,16 @@ DATABASE_URL=postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-
 
 # NextAuth.js (SERÁ CONFIGURADA AUTOMATICAMENTE SE NÃO ESTIVER DEFINIDA)
 NEXTAUTH_URL=https://main.d34l4lklofiz4e.amplifyapp.com
-NEXTAUTH_SECRET=crypto-trading-secret-key-2024-production
+NEXTAUTH_SECRET=sua-chave-secreta-super-segura-de-32-caracteres-ou-mais
 
 # JWT
 JWT_SECRET=CzclywW4UNhn7ySgrNCoHXKSLozDuR7flnzqmKBU
 
 # Email (MailerSend)
-MAILERSEND_API_TOKEN=mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9
-ADMIN_EMAIL=leonardobvieira22@gmail.com
+MAILERSEND_API_TOKEN=seu-token-mailersend-aqui
+MAILERSEND_DOMAIN=seu-dominio-verificado.mlsender.net
+EMAIL_FROM=noreply@seu-dominio-verificado.mlsender.net
+ADMIN_EMAIL=seu-email@exemplo.com
 
 # Binance API
 NEXT_PUBLIC_BINANCE_API_KEY=VGQ0dhdCcHPjEjpMxux37vJrjGnGhKbJxJxvqHQMQMxyyyjdVLTWNsNm29x
