@@ -38,8 +38,6 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { useBinance } from "@/lib/context/BinanceContext"
-import BinanceConnectionStatus from "./BinanceConnectionStatus"
-import BinanceSetupGuide from "./BinanceSetupGuide"
 
 // Tipos para os dados de candle
 interface CandleData {
@@ -471,7 +469,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-x-hidden">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -480,20 +478,22 @@ export default function Dashboard() {
             Bem-vindo de volta, <span className="text-blue-400">João Silva</span>
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <Button variant="outline" className="w-full sm:w-auto border-gray-600 text-gray-300 hover:bg-gray-800">
             <Calendar className="h-4 w-4 mr-2" />
-            Últimos 30 dias
+            <span className="hidden sm:inline">Últimos 30 dias</span>
+            <span className="sm:hidden">30 dias</span>
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
             <Zap className="h-4 w-4 mr-2" />
-            Upgrade Pro
+            <span className="hidden sm:inline">Upgrade Pro</span>
+            <span className="sm:hidden">Pro</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -592,7 +592,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
         {/* Trading Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -607,13 +607,12 @@ export default function Dashboard() {
                   <h2 className="text-xl font-bold text-white">
                     {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
                   </h2>
-                  <BinanceConnectionStatus />
                 </div>
                 <p className="text-gray-400 text-sm">Dados em tempo real</p>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <select
-                  className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:w-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={selectedPair}
                   onChange={(e) => setSelectedPair(e.target.value)}
                 >
@@ -624,7 +623,7 @@ export default function Dashboard() {
                   ))}
                 </select>
                 <select
-                  className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:w-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={selectedInterval}
                   onChange={(e) => setSelectedInterval(e.target.value)}
                 >
@@ -675,9 +674,6 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
-
-          {/* Setup Guide for User API */}
-          <BinanceSetupGuide />
         </motion.div>
       </div>
 

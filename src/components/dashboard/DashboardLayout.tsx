@@ -337,7 +337,7 @@ export default function DashboardLayout({
   )
 
   return (
-    <div className="flex h-screen bg-gray-950">
+    <div className="flex h-screen bg-gray-950 overflow-x-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-72 lg:flex-col bg-gray-900 border-r border-gray-800">
         <SidebarContent />
@@ -351,7 +351,7 @@ export default function DashboardLayout({
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Header */}
         <header className="bg-gray-900/50 backdrop-blur-xl border-b border-gray-800/50 sticky top-0 z-40">
           <div className="flex h-16 items-center justify-between px-4 lg:px-6">
@@ -434,8 +434,8 @@ export default function DashboardLayout({
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
-          <div className="p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
+          <div className="p-4 lg:p-6 max-w-full">
             {children}
           </div>
         </main>
