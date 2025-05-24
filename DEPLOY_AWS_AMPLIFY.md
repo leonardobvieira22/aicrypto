@@ -221,6 +221,9 @@ Retorna o status completo do sistema:
 - ✅ **Resolvido erro Prisma binary targets**
 - ✅ Binary targets corretos para AWS Lambda
 - ✅ Detecção automática de erros do Prisma
+- ✅ **Resolvido erro de mapeamento de campos**
+- ✅ Corrigido birthDate → dateOfBirth conforme schema
+- ✅ Corrigido verificationToken → emailVerificationToken
 - ✅ Todas as outras correções mantidas
 
 ### **Checklist Final:**
@@ -238,6 +241,8 @@ Retorna o status completo do sistema:
 - [x] **Configuração automática de URL implementada**
 - [x] **Erro Prisma binary targets resolvido**
 - [x] **Prisma Client otimizado para AWS Lambda**
+- [x] **Mapeamento de campos corrigido**
+- [x] **Schema Prisma totalmente compatível**
 
 **Status:** 🟢 **TOTALMENTE PRONTO PARA DEPLOY**
 

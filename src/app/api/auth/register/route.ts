@@ -166,7 +166,7 @@ async function createUserDefaults(userId: string): Promise<void> {
 
 // Função principal de registro
 async function registerUser(validatedData: any): Promise<{ user: any; verificationToken: string }> {
-  const { name, email, password, cpf, birthDate, phone } = validatedData
+  const { name, email, password, cpf, dateOfBirth, phone } = validatedData
   
   logger.info(`👤 [REGISTER] Iniciando registro para: ${email}`)
   
@@ -188,11 +188,11 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
       email,
       password: hashedPassword,
       cpf,
-      birthDate: new Date(birthDate),
+      dateOfBirth: new Date(dateOfBirth),
       phone,
       emailVerified: null,
-      verificationToken,
-      verificationExpiry,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpiry,
       role: 'USER',
       isActive: true
     },
@@ -201,7 +201,7 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
       name: true,
       email: true,
       cpf: true,
-      birthDate: true,
+      dateOfBirth: true,
       phone: true,
       role: true,
       isActive: true,

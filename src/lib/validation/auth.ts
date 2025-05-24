@@ -62,7 +62,7 @@ export interface RegisterInput {
   email: string
   password: string
   cpf: string
-  birthDate: string
+  dateOfBirth: string
   phone?: string
   acceptTerms: boolean
 }
@@ -128,7 +128,7 @@ export function validateRegisterData(data: any): ValidationResult<RegisterInput>
   }
   
   // Validação da data de nascimento (aceitar ambos os formatos)
-  const birthDateField = data.birthDate || data.dateOfBirth
+  const birthDateField = data.dateOfBirth || data.birthDate
   if (!birthDateField || typeof birthDateField !== 'string') {
     errors.push('Data de nascimento é obrigatória')
   } else {
@@ -162,7 +162,7 @@ export function validateRegisterData(data: any): ValidationResult<RegisterInput>
       email: data.email.toLowerCase().trim(),
       password: data.password,
       cpf: data.cpf.replace(/\D/g, ''),
-      birthDate: birthDateField,
+      dateOfBirth: birthDateField,
       phone: data.phone?.trim(),
       acceptTerms: termsAccepted
     }
