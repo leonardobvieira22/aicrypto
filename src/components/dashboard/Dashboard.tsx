@@ -542,17 +542,63 @@ const RobotPerformanceCard = ({ name, return: returnValue, pairs, risk, active =
   )
 }
 
+// Componentes de ícones das criptomoedas
+const CryptoIcon = ({ symbol }: { symbol: string }) => {
+  const iconProps = "w-6 h-6 text-white"
+  
+  switch (symbol) {
+    case "BTCUSDT":
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M23.638 14.904c-1.602 6.43-8.113 10.34-14.542 8.736C2.67 22.05-1.244 15.525.362 9.105 1.962 2.67 8.475-1.243 14.9.358c6.43 1.605 10.342 8.115 8.738 14.546z"/>
+          <path d="M17.05 10.93c.24-1.611-.985-2.477-2.66-3.054l.544-2.178-1.327-.33-.53 2.126c-.348-.087-.706-.169-1.062-.25l.533-2.139-1.328-.33-.544 2.178c-.289-.066-.573-.132-.849-.2l.002-.007-1.829-.456-.353 1.416s.985.226.964.24c.537.134.634.49.617.772L8.77 14.16c-.046.115-.164.288-.428.222.009.014-.964-.24-.964-.24l-.658 1.518 1.727.43c.321.08.635.164.944.242l-.548 2.2 1.327.33.544-2.182c.362.098.712.189 1.055.275l-.543 2.17 1.328.33.549-2.194c2.262.428 3.965.255 4.681-1.787.58-1.643-.029-2.587-1.214-3.204.864-.199 1.514-.768 1.688-1.943zm-3.018 4.23c-.41 1.647-3.183.757-4.083.533l.728-2.92c.9.225 3.78.67 3.355 2.387zm.41-4.254c-.373 1.498-2.681.738-3.427.551l.66-2.647c.746.186 3.154.533 2.767 2.096z" fill="currentColor"/>
+        </svg>
+      )
+    case "ETHUSDT":
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      )
+    case "BNBUSDT":
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6.2 8.7L12 2.9l5.8 5.8 3.4-3.4L12 0 2.8 5.3l3.4 3.4zm11.6 6.6L12 21.1l-5.8-5.8-3.4 3.4L12 24l9.2-5.3-3.4-3.4zM21.1 12l-3.4-3.4L15.3 12l2.4 2.4L21.1 12zM2.9 12l3.4-3.4L8.7 12l-2.4 2.4L2.9 12zm6.2-6.6L12 2.5l2.9 2.9L12 8.3 9.1 5.4zm0 13.2L12 21.5l2.9-2.9L12 15.7l-2.9 2.9z"/>
+        </svg>
+      )
+    case "SOLUSDT":
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M5.4 18.6c.3.3.7.3 1 0L18.6 6.4c.3-.3.3-.7 0-1s-.7-.3-1 0L5.4 17.6c-.3.3-.3.7 0 1zm0-9.2c.3.3.7.3 1 0L18.6 16.6c.3.3.3.7 0 1s-.7.3-1 0L5.4 8.4c-.3-.3-.3-.7 0-1zm13.2 4.8c-.3-.3-.7-.3-1 0L5.4 1.8c-.3-.3-.3-.7 0-1s.7-.3 1 0L18.6 13c.3.3.3.7 0 1z"/>
+        </svg>
+      )
+    case "ADAUSDT":
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.568 17.568c-1.327 1.327-3.136 2.086-5.064 2.086H12c-1.928 0-3.737-.759-5.064-2.086C5.609 16.241 4.85 14.432 4.85 12.504v-.008c0-1.928.759-3.737 2.086-5.064C8.263 6.105 10.072 5.346 12 5.346s3.737.759 5.064 2.086c1.327 1.327 2.086 3.136 2.086 5.064v.008c0 1.928-.759 3.737-2.086 5.064z"/>
+        </svg>
+      )
+    default:
+      return (
+        <svg className={iconProps} viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10"/>
+          <text x="12" y="16" textAnchor="middle" fontSize="8" fill="white">?</text>
+        </svg>
+      )
+  }
+}
+
 // Componente principal do Dashboard
 export default function Dashboard() {
   const [selectedPair, setSelectedPair] = useState("BTCUSDT")
   const [selectedInterval, setSelectedInterval] = useState("1m")
 
   const tradingPairs = [
-    { value: "BTCUSDT", label: "BTC/USDT", icon: "₿", color: "from-orange-500 to-orange-600" },
-    { value: "ETHUSDT", label: "ETH/USDT", icon: "Ξ", color: "from-blue-500 to-blue-600" },
-    { value: "BNBUSDT", label: "BNB/USDT", icon: "B", color: "from-yellow-500 to-yellow-600" },
-    { value: "SOLUSDT", label: "SOL/USDT", icon: "◎", color: "from-purple-500 to-purple-600" },
-    { value: "ADAUSDT", label: "ADA/USDT", icon: "₳", color: "from-blue-400 to-blue-500" },
+    { value: "BTCUSDT", label: "BTC/USDT", color: "from-orange-500 to-orange-600" },
+    { value: "ETHUSDT", label: "ETH/USDT", color: "from-blue-500 to-blue-600" },
+    { value: "BNBUSDT", label: "BNB/USDT", color: "from-yellow-500 to-yellow-600" },
+    { value: "SOLUSDT", label: "SOL/USDT", color: "from-purple-500 to-purple-600" },
+    { value: "ADAUSDT", label: "ADA/USDT", color: "from-blue-400 to-blue-500" },
   ]
 
   const timeIntervals = [
@@ -705,9 +751,9 @@ export default function Dashboard() {
                 {/* Título e Ícone Centralizados */}
                 <div className="flex items-center justify-center sm:justify-start space-x-3">
                   <div className={`w-10 h-10 bg-gradient-to-r ${getCurrentPair().color} rounded-xl flex items-center justify-center`}>
-                    <span className="text-white font-bold text-lg">{getCurrentPair().icon}</span>
+                    <CryptoIcon symbol={selectedPair} />
                   </div>
-                  <h2 className="text-lg font-bold text-white leading-none">
+                  <h2 className="text-2xl font-bold text-white leading-none" style={{ fontSize: '28px', lineHeight: '40px' }}>
                     {getCurrentPair().label}
                   </h2>
                 </div>
