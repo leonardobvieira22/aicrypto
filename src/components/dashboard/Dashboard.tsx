@@ -25,8 +25,7 @@ import {
   RefreshCw,
   Filter,
   Calendar,
-  MoreVertical,
-  CandlestickChart
+  MoreVertical
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -549,11 +548,11 @@ export default function Dashboard() {
   const [selectedInterval, setSelectedInterval] = useState("1m")
 
   const tradingPairs = [
-    { value: "BTCUSDT", label: "BTC/USDT" },
-    { value: "ETHUSDT", label: "ETH/USDT" },
-    { value: "BNBUSDT", label: "BNB/USDT" },
-    { value: "SOLUSDT", label: "SOL/USDT" },
-    { value: "ADAUSDT", label: "ADA/USDT" },
+    { value: "BTCUSDT", label: "BTC/USDT", icon: "₿", color: "from-orange-500 to-orange-600" },
+    { value: "ETHUSDT", label: "ETH/USDT", icon: "Ξ", color: "from-blue-500 to-blue-600" },
+    { value: "BNBUSDT", label: "BNB/USDT", icon: "B", color: "from-yellow-500 to-yellow-600" },
+    { value: "SOLUSDT", label: "SOL/USDT", icon: "◎", color: "from-purple-500 to-purple-600" },
+    { value: "ADAUSDT", label: "ADA/USDT", icon: "₳", color: "from-blue-400 to-blue-500" },
   ]
 
   const timeIntervals = [
@@ -564,6 +563,8 @@ export default function Dashboard() {
     { value: "4h", label: "4h" },
     { value: "1d", label: "1d" },
   ]
+
+  const getCurrentPair = () => tradingPairs.find(p => p.value === selectedPair) || tradingPairs[0]
 
   return (
     <div className="space-y-6 max-w-full overflow-x-hidden">
@@ -703,11 +704,11 @@ export default function Dashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 {/* Título e Ícone Centralizados */}
                 <div className="flex items-center justify-center sm:justify-start space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <CandlestickChart className="h-5 w-5 text-white" />
+                  <div className={`w-10 h-10 bg-gradient-to-r ${getCurrentPair().color} rounded-xl flex items-center justify-center`}>
+                    <span className="text-white font-bold text-lg">{getCurrentPair().icon}</span>
                   </div>
-                  <h2 className="text-xl font-bold text-white">
-                    {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
+                  <h2 className="text-lg font-bold text-white leading-none">
+                    {getCurrentPair().label}
                   </h2>
                 </div>
                 
