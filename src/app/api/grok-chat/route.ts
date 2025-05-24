@@ -31,13 +31,24 @@ interface GrokChatResponse {
 const GROK_API_KEY = process.env.GROK_API_KEY
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions'
 
+// Debug log para AWS Amplify
+console.log('🔍 [GROK DEBUG] Verificando variáveis de ambiente...')
+console.log('🔍 [GROK DEBUG] GROK_API_KEY presente:', !!GROK_API_KEY)
+console.log('🔍 [GROK DEBUG] GROK_API_KEY length:', GROK_API_KEY?.length || 0)
+console.log('🔍 [GROK DEBUG] NODE_ENV:', process.env.NODE_ENV)
+
 export async function POST(request: NextRequest) {
   try {
-    // Validação da chave da API
+    // Log adicional para debug
+    console.log('🔍 [GROK] Iniciando requisição do chat...')
+    console.log('🔍 [GROK] API Key disponível:', !!GROK_API_KEY)
+
+    // Validação da chave da API com logging melhorado
     if (!GROK_API_KEY) {
-      console.error('GROK_API_KEY não configurada')
+      console.error('❌ [GROK ERROR] GROK_API_KEY não configurada')
+      console.error('❌ [GROK ERROR] Todas as variáveis env:', Object.keys(process.env).filter(key => key.includes('GROK')))
       return NextResponse.json(
-        { error: 'Configuração da API não encontrada' },
+        { error: 'Configuração da API não encontrada. Verifique as variáveis de ambiente.' },
         { status: 500 }
       )
     }
@@ -45,6 +56,8 @@ export async function POST(request: NextRequest) {
     // Parse do corpo da requisição
     const body = await request.json()
     const { message, context } = body
+
+    console.log('🔍 [GROK] Mensagem recebida:', message.substring(0, 50) + '...')
 
     // Validação dos dados de entrada
     if (!message || typeof message !== 'string') {
@@ -94,6 +107,8 @@ Responda de forma útil e educativa, sempre lembrando que trading envolve riscos
       temperature: 0.7
     }
 
+    console.log('🔍 [GROK] Fazendo chamada para API Grok...')
+
     // Chamada para a API da Grok
     const grokResponse = await fetch(GROK_API_URL, {
       method: 'POST',
@@ -104,15 +119,17 @@ Responda de forma útil e educativa, sempre lembrando que trading envolve riscos
       body: JSON.stringify(grokRequest)
     })
 
+    console.log('🔍 [GROK] Resposta recebida, status:', grokResponse.status)
+
     // Verificação da resposta da API
     if (!grokResponse.ok) {
       const errorText = await grokResponse.text()
-      console.error('Erro na API Grok:', grokResponse.status, errorText)
+      console.error('❌ [GROK ERROR] Erro na API Grok:', grokResponse.status, errorText)
       
       // Tratamento de diferentes tipos de erro
       if (grokResponse.status === 401) {
         return NextResponse.json(
-          { error: 'Erro de autenticação com a API' },
+          { error: 'Erro de autenticação com a API Grok. Verifique a chave da API.' },
           { status: 500 }
         )
       } else if (grokResponse.status === 429) {
@@ -133,7 +150,7 @@ Responda de forma útil e educativa, sempre lembrando que trading envolve riscos
 
     // Validação da estrutura da resposta
     if (!grokData.choices || grokData.choices.length === 0) {
-      console.error('Resposta inválida da API Grok:', grokData)
+      console.error('❌ [GROK ERROR] Resposta inválida da API Grok:', grokData)
       return NextResponse.json(
         { error: 'Resposta inválida da IA' },
         { status: 500 }
@@ -151,7 +168,7 @@ Responda de forma útil e educativa, sempre lembrando que trading envolve riscos
     }
 
     // Log para monitoramento (em produção, usar um sistema de logs adequado)
-    console.log('Chat request processado:', {
+    console.log('✅ [GROK SUCCESS] Chat request processado:', {
       userMessage: message.substring(0, 100) + '...',
       responseLength: assistantMessage.length,
       tokensUsed: grokData.usage?.total_tokens || 0,
@@ -170,7 +187,7 @@ Responda de forma útil e educativa, sempre lembrando que trading envolve riscos
 
   } catch (error) {
     // Log do erro
-    console.error('Erro no endpoint grok-chat:', error)
+    console.error('❌ [GROK ERROR] Erro no endpoint grok-chat:', error)
 
     // Tratamento de diferentes tipos de erro
     if (error instanceof SyntaxError) {
