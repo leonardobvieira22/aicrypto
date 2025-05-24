@@ -38,6 +38,9 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { useBinance } from "@/lib/context/BinanceContext"
+import { useConnection } from "@/hooks/useConnection"
+import ConnectionErrorState from "@/components/dashboard/ConnectionErrorState"
+import { useRealtimeChart } from "@/hooks/useRealtimeChart"
 
 // Tipos para os dados de candle
 interface CandleData {
@@ -251,7 +254,6 @@ const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) 
 // Componente para o gráfico de trading
 const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
   const { binanceService, isMasterConnected } = useBinance()
-  const binanceWebSocket = useBinanceWebSocket()
   
   const [selectedSymbol, setSelectedSymbol] = useState(symbol)
   const [selectedInterval, setSelectedInterval] = useState(interval)
@@ -262,6 +264,42 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null)
+
+  // Hook para gerenciar atualizações em tempo real
+  const realtimeChart = useRealtimeChart({
+    symbol: selectedSymbol,
+    interval: selectedInterval,
+    onDataUpdate: useCallback((data: KlineTick) => {
+      if (!seriesRef.current) return
+
+      const update = {
+        time: (data.kline.startTime / 1000) as Time,
+        open: Number.parseFloat(data.kline.open),
+        high: Number.parseFloat(data.kline.high),
+        low: Number.parseFloat(data.kline.low),
+        close: Number.parseFloat(data.kline.close),
+        volume: Number.parseFloat(data.kline.volume)
+      }
+
+      setCandleData(currentData => {
+        const newData = [...currentData]
+        const lastIndex = newData.length - 1
+
+        if (lastIndex >= 0 && newData[lastIndex].time === update.time) {
+          newData[lastIndex] = update
+        } else if (lastIndex >= 0) {
+          newData.push(update)
+        }
+        return newData
+      })
+
+      seriesRef.current.update(update)
+    }, []),
+    enableAutoReconnect: true,
+    maxRetries: 10,
+    retryDelay: 2000,
+    inactivityTimeout: 120000
+  })
 
   // Sync props with internal state only when they change
   useEffect(() => {
@@ -274,7 +312,7 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
 
   // Memoize loadHistoricalData to prevent recreation on every render
   const loadHistoricalData = useCallback(async () => {
-    if (!seriesRef.current) return
+    if (!seriesRef.current || !isMasterConnected) return
     
     setIsLoading(true)
     setError(null)
@@ -300,70 +338,16 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
       }
     } catch (error) {
       console.error('Erro ao carregar dados históricos:', error)
-      setError('Não foi possível carregar os dados do gráfico. Verifique a conexão com a API.')
+      setError('Falha ao carregar dados históricos. Verifique sua conexão.')
       toast.error('Erro ao carregar dados', {
         description: 'Não foi possível carregar os dados do gráfico. Tente novamente mais tarde.'
       })
     } finally {
       setIsLoading(false)
     }
-  }, [binanceService, selectedSymbol, selectedInterval]) // Only these dependencies
+  }, [binanceService, selectedSymbol, selectedInterval, isMasterConnected])
 
-  // Stable handleKlineUpdate callback
-  const handleKlineUpdate = useCallback((data: KlineTick) => {
-    if (!seriesRef.current) return
-
-    const update = {
-      time: (data.kline.startTime / 1000) as Time,
-      open: Number.parseFloat(data.kline.open),
-      high: Number.parseFloat(data.kline.high),
-      low: Number.parseFloat(data.kline.low),
-      close: Number.parseFloat(data.kline.close),
-      volume: Number.parseFloat(data.kline.volume)
-    }
-
-    setCandleData(currentData => {
-      const newData = [...currentData]
-      const lastIndex = newData.length - 1
-
-      if (lastIndex >= 0 && newData[lastIndex].time === update.time) {
-        newData[lastIndex] = update
-      } else if (lastIndex >= 0) {
-        newData.push(update)
-      }
-      return newData
-    })
-
-    seriesRef.current.update(update)
-  }, [])
-
-  // WebSocket subscription - removed binanceWebSocket from dependencies to prevent recreation
-  useEffect(() => {
-    if (!isMasterConnected) return
-
-    const streamName = `${selectedSymbol.toLowerCase()}@kline_${selectedInterval}`
-    
-    binanceWebSocket.subscribeKline({
-      symbols: [selectedSymbol],
-      interval: selectedInterval,
-      callbacks: {
-        onKline: handleKlineUpdate,
-        onOpen: () => {
-          console.log(`WebSocket conectado para ${streamName}`)
-        },
-        onError: (event) => {
-          console.error('Erro na conexão WebSocket:', event)
-          setError('Erro na conexão em tempo real. Os dados podem estar desatualizados.')
-        }
-      }
-    })
-
-    return () => {
-      binanceWebSocket.unsubscribe(streamName)
-    }
-  }, [selectedSymbol, selectedInterval, handleKlineUpdate, isMasterConnected]) // removed binanceWebSocket
-
-  // Chart initialization - only when container is available, do not depend on loadHistoricalData
+  // Chart initialization - only when container is available
   useEffect(() => {
     if (!chartContainerRef.current) return
 
@@ -386,7 +370,7 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
         horzLines: { color: 'rgba(55, 65, 81, 0.2)' },
       },
       width: chartContainerRef.current.clientWidth,
-      height: 450,
+      height: window.innerWidth < 640 ? 350 : 450, // Altura responsiva para mobile
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
@@ -410,7 +394,8 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
     const handleResize = () => {
       if (chartContainerRef.current) {
         chart.applyOptions({
-          width: chartContainerRef.current.clientWidth
+          width: chartContainerRef.current.clientWidth,
+          height: window.innerWidth < 640 ? 350 : 450
         })
       }
     }
@@ -445,40 +430,116 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
     }
   }, [selectedSymbol, selectedInterval, loadHistoricalData])
 
+  // Função para tentar reconectar manualmente
+  const handleManualRetry = useCallback(() => {
+    setError(null)
+    setIsLoading(true)
+    
+    // Tentar reconectar o sistema de tempo real
+    realtimeChart.reconnect()
+    
+    // Recarregar dados históricos
+    setTimeout(() => {
+      loadHistoricalData()
+    }, 1000)
+  }, [realtimeChart, loadHistoricalData])
+
+  // Estados de loading e erro com design responsivo
   if (isLoading && !seriesRef.current) {
     return (
-      <div ref={chartContainerRef} className="w-full h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex flex-col items-center">
+      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex flex-col items-center px-4">
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-          <p className="mt-2 text-gray-400">Carregando dados do gráfico...</p>
+          <p className="mt-3 text-gray-400 text-center text-sm md:text-base">Carregando dados do gráfico...</p>
+          <p className="mt-1 text-gray-500 text-xs md:text-sm">Conectando aos servidores de dados</p>
         </div>
       </div>
     )
   }
 
-  if (error) {
+  // Estado de erro com componente especializado
+  if ((error || realtimeChart.hasError) && !realtimeChart.internetConnected) {
     return (
-      <div ref={chartContainerRef} className="w-full h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex flex-col items-center text-center">
-          <span className="text-red-400 text-4xl mb-2">!</span>
-          <p className="text-red-400 mb-4">{error}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadHistoricalData}
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
-          >
-            Tentar novamente
-          </Button>
-        </div>
+      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px]">
+        <ConnectionErrorState
+          status={realtimeChart.globalConnectionStatus}
+          onRetry={handleManualRetry}
+          isRetrying={realtimeChart.isRetrying || isLoading}
+          canRetry={realtimeChart.canRetry}
+          size="md"
+          showDetails={true}
+          className="h-full"
+        />
       </div>
     )
   }
 
   return (
-    <div>
-      <div ref={chartContainerRef} className="w-full h-[450px] bg-gradient-to-br from-gray-900/20 to-gray-800/20 rounded-2xl border border-gray-700/20 backdrop-blur-sm" />
-      {!isLoading && !error && <PriceMetrics data={candleData} symbol={selectedSymbol} />}
+    <div className="space-y-3">
+      {/* Barra de status da conexão para mobile */}
+      <div className="flex items-center justify-between bg-gray-800/30 rounded-lg p-2 md:p-3">
+        <div className="flex items-center space-x-2">
+          <div className={`w-2 h-2 rounded-full ${
+            realtimeChart.isConnected && realtimeChart.internetConnected ? 'bg-green-400 animate-pulse' : 
+            realtimeChart.isConnecting ? 'bg-yellow-400 animate-pulse' :
+            'bg-red-400'
+          }`}></div>
+          <span className="text-xs md:text-sm text-gray-300">
+            {realtimeChart.isConnected && realtimeChart.internetConnected ? 'Tempo real ativo' :
+             realtimeChart.isConnecting ? 'Conectando...' :
+             'Dados desatualizados'}
+          </span>
+          
+          {/* Badge de qualidade da conexão */}
+          {realtimeChart.isConnected && (
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${
+                realtimeChart.connectionQuality === 'excellent' ? 'border-green-500/30 text-green-400' :
+                realtimeChart.connectionQuality === 'good' ? 'border-blue-500/30 text-blue-400' :
+                realtimeChart.connectionQuality === 'poor' ? 'border-yellow-500/30 text-yellow-400' :
+                'border-red-500/30 text-red-400'
+              }`}
+            >
+              {realtimeChart.connectionQuality === 'excellent' ? 'Excelente' :
+               realtimeChart.connectionQuality === 'good' ? 'Boa' :
+               realtimeChart.connectionQuality === 'poor' ? 'Fraca' : 'Offline'}
+            </Badge>
+          )}
+        </div>
+        
+        {realtimeChart.lastUpdateTime && (
+          <span className="text-xs text-gray-400 hidden sm:block">
+            Última atualização: {realtimeChart.lastUpdateTime.toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
+          </span>
+        )}
+        
+        {(error || realtimeChart.hasError) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualRetry}
+            disabled={realtimeChart.isRetrying || isLoading}
+            className="text-xs border-gray-600 text-gray-300 hover:bg-gray-700 h-6 px-2 md:h-8 md:px-3"
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${(realtimeChart.isRetrying || isLoading) ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Reconectar</span>
+            <span className="sm:hidden">↻</span>
+          </Button>
+        )}
+      </div>
+
+      {/* Container do gráfico */}
+      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px] bg-gradient-to-br from-gray-900/20 to-gray-800/20 rounded-2xl border border-gray-700/20 backdrop-blur-sm" />
+      
+      {/* Métricas de preço - só mostrar se tiver dados */}
+      {!isLoading && !error && candleData.length > 0 && (
+        <PriceMetrics data={candleData} symbol={selectedSymbol} />
+      )}
     </div>
   )
 }

@@ -80,6 +80,15 @@ export type DepthTick = {
 // União de todos os tipos de eventos possíveis
 export type WebSocketTick = KlineTick | TickerTick | TradeTick | DepthTick
 
+// Estado da conexão WebSocket
+export interface WebSocketConnectionState {
+  status: 'connecting' | 'connected' | 'disconnected' | 'error' | 'reconnecting'
+  lastMessage: number
+  reconnectAttempts: number
+  isHealthy: boolean
+  latency: number
+}
+
 // Callbacks para os diferentes tipos de eventos
 export type WebSocketCallbacks = {
   onMessage?: (data: WebSocketTick) => void
@@ -90,6 +99,8 @@ export type WebSocketCallbacks = {
   onOpen?: (event: Event) => void
   onClose?: (event: CloseEvent) => void
   onError?: (event: Event) => void
+  onReconnect?: () => void
+  onMaxRetriesReached?: () => void
 }
 
 // Configurações para as streams
@@ -97,11 +108,23 @@ export type WebSocketConfig = {
   symbols: string[]
   interval?: string
   callbacks: WebSocketCallbacks
+  maxRetries?: number
+  retryDelay?: number
+  heartbeatInterval?: number
+  enableAutoReconnect?: boolean
 }
 
-// Interface para o gerenciador de WebSockets
+// Interface aprimorada para o gerenciador de WebSockets
 export interface BinanceWebSocketManager {
-  connections: Map<string, WebSocket>
+  connections: Map<string, {
+    socket: WebSocket
+    state: WebSocketConnectionState
+    config: WebSocketConfig
+    heartbeatTimer?: NodeJS.Timeout
+    reconnectTimer?: NodeJS.Timeout
+    lastPingTime?: number
+  }>
+  createConnection: (streamName: string, config: WebSocketConfig) => void
   subscribeKline: (config: WebSocketConfig) => void
   subscribeTicker: (config: WebSocketConfig) => void
   subscribeTrade: (config: WebSocketConfig) => void
@@ -109,218 +132,266 @@ export interface BinanceWebSocketManager {
   unsubscribe: (streamName: string) => void
   unsubscribeAll: () => void
   isConnected: (streamName: string) => boolean
+  getConnectionState: (streamName: string) => WebSocketConnectionState | null
+  reconnect: (streamName: string) => void
+  reconnectAll: () => void
+  cleanup: () => void
 }
 
-// Estado global para gerenciar as conexões WebSocket
+// Constantes para configuração
+const DEFAULT_MAX_RETRIES = 5
+const DEFAULT_RETRY_DELAY = 3000
+const DEFAULT_HEARTBEAT_INTERVAL = 30000
+const MAX_MESSAGE_TIMEOUT = 60000 // 1 minuto sem mensagens = conexão morta
+
+// Estado global para gerenciar as conexões WebSocket aprimorado
 export const useBinanceWebSocket = create<BinanceWebSocketManager>((set, get) => ({
-  connections: new Map<string, WebSocket>(),
+  connections: new Map(),
 
-  subscribeKline: (config: WebSocketConfig) => {
-    const { symbols, interval = '1m', callbacks } = config
+  // Função auxiliar para criar uma nova conexão
+  createConnection: (streamName: string, config: WebSocketConfig) => {
+    const {
+      maxRetries = DEFAULT_MAX_RETRIES,
+      retryDelay = DEFAULT_RETRY_DELAY,
+      heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL,
+      enableAutoReconnect = true,
+      callbacks
+    } = config
 
-    symbols.forEach(symbol => {
-      const streamName = `${symbol.toLowerCase()}@kline_${interval}`
-      const socket = get().connections.get(streamName)
+    // Limpar conexão existente se houver
+    const existingConnection = get().connections.get(streamName)
+    if (existingConnection) {
+      existingConnection.socket?.close()
+      if (existingConnection.heartbeatTimer) clearInterval(existingConnection.heartbeatTimer)
+      if (existingConnection.reconnectTimer) clearTimeout(existingConnection.reconnectTimer)
+    }
 
-      // Se já existir uma conexão ativa para este stream, não faz nada
-      if (socket?.readyState === WebSocket.OPEN) return
+    const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`
+    const ws = new WebSocket(wsUrl)
+    
+    const connectionState: WebSocketConnectionState = {
+      status: 'connecting',
+      lastMessage: Date.now(),
+      reconnectAttempts: 0,
+      isHealthy: true,
+      latency: 0
+    }
 
-      // Cria uma nova conexão para o stream
-      const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`
-      const ws = new WebSocket(wsUrl)
+    // Função de reconexão
+    const attemptReconnection = () => {
+      if (!enableAutoReconnect) return
+      
+      const currentConnection = get().connections.get(streamName)
+      if (!currentConnection) return
 
-      ws.onopen = (event) => {
-        callbacks.onOpen?.(event)
+      if (currentConnection.state.reconnectAttempts >= maxRetries) {
+        callbacks.onMaxRetriesReached?.()
+        return
       }
 
-      ws.onclose = (event) => {
-        callbacks.onClose?.(event)
-        // Remove a conexão do mapa quando fechar
-        const connections = get().connections
-        connections.delete(streamName)
-        set({ connections: new Map(connections) })
-      }
+      currentConnection.state.status = 'reconnecting'
+      currentConnection.state.reconnectAttempts++
+      
+      // Backoff exponencial com jitter
+      const baseDelay = retryDelay * Math.pow(1.5, currentConnection.state.reconnectAttempts - 1)
+      const jitter = Math.random() * 1000
+      const delay = Math.min(baseDelay + jitter, 30000) // Max 30s
 
-      ws.onerror = (event) => {
-        callbacks.onError?.(event)
-      }
+      console.log(`Tentando reconectar ${streamName} em ${Math.round(delay / 1000)}s (tentativa ${currentConnection.state.reconnectAttempts}/${maxRetries})`)
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as KlineTick
-          callbacks.onMessage?.(data)
+      currentConnection.reconnectTimer = setTimeout(() => {
+        get().createConnection(streamName, config)
+        callbacks.onReconnect?.()
+      }, delay)
 
-          if (data.eventType === 'kline') {
-            callbacks.onKline?.(data)
+      // Atualizar estado
+      const connections = get().connections
+      connections.set(streamName, currentConnection)
+      set({ connections: new Map(connections) })
+    }
+
+    // Configurar heartbeat para monitorar a saúde da conexão
+    const setupHeartbeat = () => {
+      return setInterval(() => {
+        const currentConnection = get().connections.get(streamName)
+        if (!currentConnection) return
+
+        const timeSinceLastMessage = Date.now() - currentConnection.state.lastMessage
+        
+        if (timeSinceLastMessage > MAX_MESSAGE_TIMEOUT) {
+          console.warn(`Conexão ${streamName} parece morta (${Math.round(timeSinceLastMessage / 1000)}s sem mensagens)`)
+          currentConnection.state.isHealthy = false
+          
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close(1000, 'Heartbeat timeout')
           }
-        } catch (error) {
-          console.error('Erro ao processar mensagem do WebSocket:', error)
+          
+          attemptReconnection()
+        } else {
+          currentConnection.state.isHealthy = true
+        }
+      }, heartbeatInterval)
+    }
+
+    // Eventos WebSocket
+    ws.onopen = (event) => {
+      console.log(`✅ WebSocket conectado: ${streamName}`)
+      
+      connectionState.status = 'connected'
+      connectionState.lastMessage = Date.now()
+      connectionState.reconnectAttempts = 0
+      connectionState.isHealthy = true
+
+      const heartbeatTimer = setupHeartbeat()
+      
+      const connections = get().connections
+      connections.set(streamName, {
+        socket: ws,
+        state: connectionState,
+        config,
+        heartbeatTimer,
+        lastPingTime: Date.now()
+      })
+      set({ connections: new Map(connections) })
+
+      callbacks.onOpen?.(event)
+    }
+
+    ws.onclose = (event) => {
+      console.log(`❌ WebSocket desconectado: ${streamName} (código: ${event.code})`)
+      
+      const currentConnection = get().connections.get(streamName)
+      if (currentConnection) {
+        if (currentConnection.heartbeatTimer) {
+          clearInterval(currentConnection.heartbeatTimer)
+        }
+
+        currentConnection.state.status = 'disconnected'
+        
+        // Só tentar reconectar se não foi fechamento manual (código 1000)
+        if (event.code !== 1000 && enableAutoReconnect) {
+          attemptReconnection()
+        } else {
+          // Remover completamente se foi fechamento manual
+          const connections = get().connections
+          connections.delete(streamName)
+          set({ connections: new Map(connections) })
         }
       }
 
-      // Adiciona a nova conexão ao mapa
-      const connections = get().connections
-      connections.set(streamName, ws)
-      set({ connections: new Map(connections) })
+      callbacks.onClose?.(event)
+    }
+
+    ws.onerror = (event) => {
+      console.error(`💥 Erro WebSocket: ${streamName}`, event)
+      
+      const currentConnection = get().connections.get(streamName)
+      if (currentConnection) {
+        currentConnection.state.status = 'error'
+        currentConnection.state.isHealthy = false
+      }
+
+      callbacks.onError?.(event)
+      
+      // Tentar reconectar em caso de erro
+      if (enableAutoReconnect) {
+        attemptReconnection()
+      }
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const startTime = performance.now()
+        const data = JSON.parse(event.data)
+        const endTime = performance.now()
+        
+        const currentConnection = get().connections.get(streamName)
+        if (currentConnection) {
+          currentConnection.state.lastMessage = Date.now()
+          currentConnection.state.latency = endTime - startTime
+          currentConnection.state.isHealthy = true
+        }
+
+        callbacks.onMessage?.(data)
+
+        // Processar eventos específicos
+        switch (data.eventType) {
+          case 'kline':
+            callbacks.onKline?.(data as KlineTick)
+            break
+          case 'ticker':
+            callbacks.onTicker?.(data as TickerTick)
+            break
+          case 'trade':
+            callbacks.onTrade?.(data as TradeTick)
+            break
+          case 'depthUpdate':
+            callbacks.onDepth?.(data as DepthTick)
+            break
+        }
+      } catch (error) {
+        console.error('Erro ao processar mensagem do WebSocket:', error)
+      }
+    }
+
+    // Armazenar informações iniciais da conexão
+    const connections = get().connections
+    connections.set(streamName, {
+      socket: ws,
+      state: connectionState,
+      config
+    })
+    set({ connections: new Map(connections) })
+  },
+
+  subscribeKline: (config: WebSocketConfig) => {
+    const { symbols, interval = '1m' } = config
+
+    symbols.forEach(symbol => {
+      const streamName = `${symbol.toLowerCase()}@kline_${interval}`
+      get().createConnection(streamName, config)
     })
   },
 
   subscribeTicker: (config: WebSocketConfig) => {
-    const { symbols, callbacks } = config
+    const { symbols } = config
 
     symbols.forEach(symbol => {
       const streamName = `${symbol.toLowerCase()}@ticker`
-      const socket = get().connections.get(streamName)
-
-      // Se já existir uma conexão ativa para este stream, não faz nada
-      if (socket?.readyState === WebSocket.OPEN) return
-
-      // Cria uma nova conexão para o stream
-      const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`
-      const ws = new WebSocket(wsUrl)
-
-      ws.onopen = (event) => {
-        callbacks.onOpen?.(event)
-      }
-
-      ws.onclose = (event) => {
-        callbacks.onClose?.(event)
-        // Remove a conexão do mapa quando fechar
-        const connections = get().connections
-        connections.delete(streamName)
-        set({ connections: new Map(connections) })
-      }
-
-      ws.onerror = (event) => {
-        callbacks.onError?.(event)
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as TickerTick
-          callbacks.onMessage?.(data)
-
-          if (data.eventType === 'ticker') {
-            callbacks.onTicker?.(data)
-          }
-        } catch (error) {
-          console.error('Erro ao processar mensagem do WebSocket:', error)
-        }
-      }
-
-      // Adiciona a nova conexão ao mapa
-      const connections = get().connections
-      connections.set(streamName, ws)
-      set({ connections: new Map(connections) })
+      get().createConnection(streamName, config)
     })
   },
 
   subscribeTrade: (config: WebSocketConfig) => {
-    const { symbols, callbacks } = config
+    const { symbols } = config
 
     symbols.forEach(symbol => {
       const streamName = `${symbol.toLowerCase()}@trade`
-      const socket = get().connections.get(streamName)
-
-      // Se já existir uma conexão ativa para este stream, não faz nada
-      if (socket?.readyState === WebSocket.OPEN) return
-
-      // Cria uma nova conexão para o stream
-      const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`
-      const ws = new WebSocket(wsUrl)
-
-      ws.onopen = (event) => {
-        callbacks.onOpen?.(event)
-      }
-
-      ws.onclose = (event) => {
-        callbacks.onClose?.(event)
-        // Remove a conexão do mapa quando fechar
-        const connections = get().connections
-        connections.delete(streamName)
-        set({ connections: new Map(connections) })
-      }
-
-      ws.onerror = (event) => {
-        callbacks.onError?.(event)
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as TradeTick
-          callbacks.onMessage?.(data)
-
-          if (data.eventType === 'trade') {
-            callbacks.onTrade?.(data)
-          }
-        } catch (error) {
-          console.error('Erro ao processar mensagem do WebSocket:', error)
-        }
-      }
-
-      // Adiciona a nova conexão ao mapa
-      const connections = get().connections
-      connections.set(streamName, ws)
-      set({ connections: new Map(connections) })
+      get().createConnection(streamName, config)
     })
   },
 
   subscribeDepth: (config: WebSocketConfig) => {
-    const { symbols, callbacks } = config
+    const { symbols } = config
 
     symbols.forEach(symbol => {
       const streamName = `${symbol.toLowerCase()}@depth`
-      const socket = get().connections.get(streamName)
-
-      // Se já existir uma conexão ativa para este stream, não faz nada
-      if (socket?.readyState === WebSocket.OPEN) return
-
-      // Cria uma nova conexão para o stream
-      const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`
-      const ws = new WebSocket(wsUrl)
-
-      ws.onopen = (event) => {
-        callbacks.onOpen?.(event)
-      }
-
-      ws.onclose = (event) => {
-        callbacks.onClose?.(event)
-        // Remove a conexão do mapa quando fechar
-        const connections = get().connections
-        connections.delete(streamName)
-        set({ connections: new Map(connections) })
-      }
-
-      ws.onerror = (event) => {
-        callbacks.onError?.(event)
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as DepthTick
-          callbacks.onMessage?.(data)
-
-          if (data.eventType === 'depthUpdate') {
-            callbacks.onDepth?.(data)
-          }
-        } catch (error) {
-          console.error('Erro ao processar mensagem do WebSocket:', error)
-        }
-      }
-
-      // Adiciona a nova conexão ao mapa
-      const connections = get().connections
-      connections.set(streamName, ws)
-      set({ connections: new Map(connections) })
+      get().createConnection(streamName, config)
     })
   },
 
   unsubscribe: (streamName: string) => {
     const connections = get().connections
-    const socket = connections.get(streamName)
+    const connection = connections.get(streamName)
 
-    if (socket) {
-      socket.close()
+    if (connection) {
+      if (connection.heartbeatTimer) clearInterval(connection.heartbeatTimer)
+      if (connection.reconnectTimer) clearTimeout(connection.reconnectTimer)
+      
+      if (connection.socket.readyState === WebSocket.OPEN) {
+        connection.socket.close(1000, 'Manual unsubscribe')
+      }
+      
       connections.delete(streamName)
       set({ connections: new Map(connections) })
     }
@@ -329,16 +400,47 @@ export const useBinanceWebSocket = create<BinanceWebSocketManager>((set, get) =>
   unsubscribeAll: () => {
     const connections = get().connections
 
-    connections.forEach((socket, streamName) => {
-      socket.close()
+    connections.forEach((connection, streamName) => {
+      if (connection.heartbeatTimer) clearInterval(connection.heartbeatTimer)
+      if (connection.reconnectTimer) clearTimeout(connection.reconnectTimer)
+      
+      if (connection.socket.readyState === WebSocket.OPEN) {
+        connection.socket.close(1000, 'Unsubscribe all')
+      }
     })
 
     set({ connections: new Map() })
   },
 
   isConnected: (streamName: string) => {
-    const socket = get().connections.get(streamName)
-    return socket?.readyState === WebSocket.OPEN
+    const connection = get().connections.get(streamName)
+    return connection?.socket?.readyState === WebSocket.OPEN && connection.state.isHealthy
+  },
+
+  getConnectionState: (streamName: string) => {
+    const connection = get().connections.get(streamName)
+    return connection?.state || null
+  },
+
+  reconnect: (streamName: string) => {
+    const connection = get().connections.get(streamName)
+    if (connection) {
+      // Resetar contador de tentativas para permitir reconexão manual
+      connection.state.reconnectAttempts = 0
+      get().createConnection(streamName, connection.config)
+    }
+  },
+
+  reconnectAll: () => {
+    const connections = get().connections
+    connections.forEach((connection, streamName) => {
+      connection.state.reconnectAttempts = 0
+      get().createConnection(streamName, connection.config)
+    })
+  },
+
+  cleanup: () => {
+    get().unsubscribeAll()
   }
 }))
 
