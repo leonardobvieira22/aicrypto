@@ -2,16 +2,35 @@ import NextAuth, { type NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import GithubProvider from 'next-auth/providers/github'
-import prisma from '@/lib/prisma'
 import bcrypt from 'bcrypt'
+
+// Importar Prisma de forma segura
+let prisma: any = null
+let PrismaAdapter: any = null
 
 // Função para verificar se o Prisma está disponível
 const isPrismaAvailable = () => {
   try {
+    if (!prisma) {
+      prisma = require('@/lib/config/database').prisma
+    }
     return prisma && typeof prisma.user !== 'undefined'
   } catch (error) {
     console.log('[AUTH] Prisma não disponível:', error)
     return false
+  }
+}
+
+// Função para carregar PrismaAdapter de forma segura
+const loadPrismaAdapter = () => {
+  try {
+    if (!PrismaAdapter) {
+      PrismaAdapter = require('@auth/prisma-adapter').PrismaAdapter
+    }
+    return PrismaAdapter
+  } catch (error) {
+    console.log('[AUTH] PrismaAdapter não disponível:', error)
+    return null
   }
 }
 
@@ -33,11 +52,11 @@ const demoUsers = [
     image: 'https://avatars.githubusercontent.com/u/2?v=4',
     role: 'USER',
   }
-];
+]
 
 // Configuração base do NextAuth
 const baseAuthOptions: NextAuthOptions = {
-  // Usar JWT para sessões (mais confiável para desenvolvimento)
+  // Usar JWT para sessões (mais confiável)
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 dias
@@ -51,19 +70,26 @@ const baseAuthOptions: NextAuthOptions = {
   },
 
   // Configuração de segurança
-  secret: process.env.NEXTAUTH_SECRET || 'default-secret-for-development',
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development-only',
   debug: process.env.NODE_ENV === 'development',
 
   // Provedores de autenticação
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    }),
-    GithubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || '',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
-    }),
+    // OAuth providers (apenas se configurados)
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      })
+    ] : []),
+    
+    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET ? [
+      GithubProvider({
+        clientId: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      })
+    ] : []),
+
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -71,88 +97,85 @@ const baseAuthOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          console.log('[AUTH] Credenciais não fornecidas');
-          throw new Error('MISSING_CREDENTIALS');
-        }
-
-        console.log(`[AUTH] Tentativa de login para: ${credentials.email}`);
-
         try {
-          // Verificar credenciais hardcoded primeiro (para desenvolvimento e testes)
-          const demoUser = demoUsers.find(u => u.email === credentials.email);
+          if (!credentials?.email || !credentials?.password) {
+            console.log('[AUTH] Credenciais não fornecidas')
+            return null
+          }
+
+          console.log(`[AUTH] Tentativa de login para: ${credentials.email}`)
+
+          // Verificar credenciais demo primeiro
+          const demoUser = demoUsers.find(u => u.email === credentials.email)
 
           if (demoUser) {
-            console.log('[AUTH] Usuário demo encontrado');
-            console.log('[AUTH] Verificando senha...');
+            console.log('[AUTH] Usuário demo encontrado')
             
-            const passwordMatch = await bcrypt
-              .compare(credentials.password, demoUser.password)
-              .catch((err) => {
-                console.error('[AUTH] Erro ao comparar senha demo:', err);
-                return false;
-              });
-
-            console.log('[AUTH] Resultado da comparação:', passwordMatch);
-
-            if (passwordMatch) {
-              console.log('[AUTH] Login demo bem-sucedido');
-              return {
-                id: demoUser.id,
-                name: demoUser.name,
-                email: demoUser.email,
-                image: demoUser.image,
-                role: demoUser.role,
+            try {
+              const passwordMatch = await bcrypt.compare(credentials.password, demoUser.password)
+              
+              if (passwordMatch) {
+                console.log('[AUTH] Login demo bem-sucedido')
+                return {
+                  id: demoUser.id,
+                  name: demoUser.name,
+                  email: demoUser.email,
+                  image: demoUser.image,
+                  role: demoUser.role,
+                }
+              } else {
+                console.log('[AUTH] Senha demo inválida')
+                return null
               }
-            } else {
-              console.log('[AUTH] Senha demo inválida');
-              throw new Error('INVALID_PASSWORD');
+            } catch (bcryptError) {
+              console.error('[AUTH] Erro ao verificar senha demo:', bcryptError)
+              return null
             }
           }
 
-          // Se não for um usuário de demonstração e o Prisma estiver disponível, tenta verificar no banco de dados
+          // Se não for demo e Prisma estiver disponível, verificar no banco
           if (isPrismaAvailable()) {
-            console.log('[AUTH] Verificando usuário no banco de dados');
+            console.log('[AUTH] Verificando usuário no banco de dados')
+            
             try {
-              // Verificar usuário no banco de dados
               const user = await prisma.user.findUnique({
                 where: { email: credentials.email },
-              });
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  password: true,
+                  role: true,
+                  isActive: true,
+                  emailVerified: true,
+                  image: true
+                }
+              })
 
               if (!user) {
-                console.log('[AUTH] Usuário não encontrado no banco');
-                throw new Error('USER_NOT_FOUND');
+                console.log('[AUTH] Usuário não encontrado no banco')
+                return null
               }
 
               if (!user.password) {
-                console.log('[AUTH] Usuário sem senha (talvez OAuth)');
-                throw new Error('NO_PASSWORD_SET');
+                console.log('[AUTH] Usuário sem senha (OAuth)')
+                return null
               }
 
-              // Verificar se o email foi verificado (exceto usuários de demonstração/admin)
-              if (!user.emailVerified && user.role !== 'ADMIN') {
-                console.log('[AUTH] Email não verificado');
-                throw new Error('email_not_verified');
-              }
-
-              // Verificar se a conta está ativa
               if (!user.isActive) {
-                console.log('[AUTH] Conta inativa');
-                throw new Error('ACCOUNT_SUSPENDED');
+                console.log('[AUTH] Conta inativa')
+                return null
               }
 
-              // Verificar se a senha está correta
-              const isPasswordValid = await bcrypt.compare(
-                credentials.password,
-                user.password
-              );
+              // Verificar senha
+              const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
 
               if (!isPasswordValid) {
-                console.log('[AUTH] Senha inválida para usuário do banco');
-                throw new Error('INVALID_PASSWORD');
+                console.log('[AUTH] Senha inválida')
+                return null
               }
 
-              console.log('[AUTH] Login do banco bem-sucedido');
+              console.log('[AUTH] Login do banco bem-sucedido')
               return {
                 id: user.id,
                 name: user.name,
@@ -161,30 +184,16 @@ const baseAuthOptions: NextAuthOptions = {
                 role: user.role,
               }
             } catch (dbError) {
-              console.error('[AUTH] Erro ao verificar usuário no banco de dados:', dbError);
-              
-              // Se o erro foi lançado por nós, re-throw
-              if (dbError instanceof Error && ['USER_NOT_FOUND', 'NO_PASSWORD_SET', 'email_not_verified', 'ACCOUNT_SUSPENDED', 'INVALID_PASSWORD'].includes(dbError.message)) {
-                throw dbError;
-              }
-              
-              // Para erros de conexão/sistema, lançar erro de database
-              throw new Error('DATABASE_ERROR');
+              console.error('[AUTH] Erro ao verificar usuário no banco:', dbError)
+              return null
             }
           } else {
-            console.log('[AUTH] Prisma não disponível e usuário não é demo');
-            throw new Error('USER_NOT_FOUND');
+            console.log('[AUTH] Prisma não disponível e usuário não é demo')
+            return null
           }
         } catch (error) {
-          console.error('[AUTH] Erro na autenticação:', error);
-          
-          // Se já é um erro nosso, re-throw
-          if (error instanceof Error) {
-            throw error;
-          }
-          
-          // Para erros desconhecidos
-          throw new Error('UNKNOWN_ERROR');
+          console.error('[AUTH] Erro geral na autenticação:', error)
+          return null
         }
       },
     }),
@@ -193,79 +202,87 @@ const baseAuthOptions: NextAuthOptions = {
   // Callbacks
   callbacks: {
     async session({ session, token }) {
-      // Adiciona o ID do usuário à sessão
-      if (token.sub) {
-        session.user.id = token.sub;
+      try {
+        // Adiciona o ID do usuário à sessão
+        if (token.sub) {
+          session.user.id = token.sub
 
-        // Adiciona o papel do usuário à sessão
-        if (token.role) {
-          session.user.role = token.role as string;
-        } else {
-          // Tenta encontrar o papel nos usuários de demonstração primeiro
-          const demoUser = demoUsers.find(u => u.id === token.sub);
-          if (demoUser) {
-            session.user.role = demoUser.role;
-          } else if (isPrismaAvailable()) {
-            // Tenta buscar o papel do usuário do banco de dados
-            try {
-              const user = await prisma.user.findUnique({
-                where: { id: token.sub },
-                select: { role: true },
-              });
-
-              if (user) {
-                session.user.role = user.role;
-              } else {
-                // Default para USER se não conseguir buscar
-                session.user.role = 'USER';
-              }
-            } catch (error) {
-              console.error('Erro ao buscar papel do usuário:', error);
-              // Default para USER se houver erro
-              session.user.role = 'USER';
-            }
+          // Adiciona o papel do usuário à sessão
+          if (token.role) {
+            session.user.role = token.role as string
           } else {
-            // Default para USER se Prisma não estiver disponível
-            session.user.role = 'USER';
+            // Buscar papel nos usuários demo
+            const demoUser = demoUsers.find(u => u.id === token.sub)
+            if (demoUser) {
+              session.user.role = demoUser.role
+            } else if (isPrismaAvailable()) {
+              // Buscar papel no banco
+              try {
+                const user = await prisma.user.findUnique({
+                  where: { id: token.sub },
+                  select: { role: true },
+                })
+
+                session.user.role = user?.role || 'USER'
+              } catch (error) {
+                console.error('[AUTH] Erro ao buscar papel do usuário:', error)
+                session.user.role = 'USER'
+              }
+            } else {
+              session.user.role = 'USER'
+            }
           }
         }
+        return session
+      } catch (error) {
+        console.error('[AUTH] Erro no callback session:', error)
+        return session
       }
-      return session;
     },
+    
     async jwt({ token, user }) {
-      // Adiciona dados do usuário ao token
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
+      try {
+        // Adiciona dados do usuário ao token
+        if (user) {
+          token.id = user.id
+          token.role = user.role
+        }
+        return token
+      } catch (error) {
+        console.error('[AUTH] Erro no callback jwt:', error)
+        return token
       }
-      return token;
     },
   },
-};
-
-// Adicionar o PrismaAdapter apenas se estiver disponível
-let authOptions = baseAuthOptions;
-
-if (isPrismaAvailable()) {
-  try {
-    const { PrismaAdapter } = require('@auth/prisma-adapter')
-    authOptions = {
-      ...baseAuthOptions,
-      adapter: PrismaAdapter(prisma),
-    }
-    console.log('[AUTH] PrismaAdapter configurado com sucesso')
-  } catch (error) {
-    console.log('[AUTH] Erro ao configurar PrismaAdapter, usando configuração JWT:', error)
-  }
-} else {
-  console.log('[AUTH] Usando configuração JWT sem PrismaAdapter')
 }
 
-/**
- * Opções de configuração do NextAuth
- */
-export { authOptions }
+// Configurar authOptions com ou sem PrismaAdapter
+let authOptions = baseAuthOptions
 
-// Manipulador de rota para o NextAuth
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+// Tentar adicionar PrismaAdapter se disponível
+if (isPrismaAvailable()) {
+  const adapter = loadPrismaAdapter()
+  if (adapter && prisma) {
+    try {
+      authOptions = {
+        ...baseAuthOptions,
+        adapter: adapter(prisma),
+      }
+      console.log('[AUTH] PrismaAdapter configurado com sucesso')
+    } catch (error) {
+      console.log('[AUTH] Erro ao configurar PrismaAdapter:', error)
+      console.log('[AUTH] Usando configuração JWT sem adapter')
+    }
+  } else {
+    console.log('[AUTH] PrismaAdapter não disponível, usando JWT')
+  }
+} else {
+  console.log('[AUTH] Prisma não disponível, usando JWT')
+}
+
+// Criar handler do NextAuth
+const handler = NextAuth(authOptions)
+
+// Exportar configurações e handlers
+export { authOptions }
+export { handler as GET, handler as POST }
