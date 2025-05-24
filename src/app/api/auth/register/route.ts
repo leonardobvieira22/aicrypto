@@ -12,8 +12,7 @@ let prisma: any = null
 let testDatabaseConnection: any = null
 let validateRegisterData: any = null
 let sanitizeInput: any = null
-let sendVerificationEmail: any = null
-let sendWelcomeEmail: any = null
+let emailService: any = null
 
 // Função para carregar dependências de forma segura
 const loadDependencies = () => {
@@ -30,10 +29,9 @@ const loadDependencies = () => {
       sanitizeInput = validationModule.sanitizeInput
     }
     
-    if (!sendVerificationEmail) {
-      const emailModule = require('@/lib/services/email')
-      sendVerificationEmail = emailModule.sendVerificationEmail
-      sendWelcomeEmail = emailModule.sendWelcomeEmail
+    if (!emailService) {
+      const emailModule = require('@/lib/services/emailService')
+      emailService = emailModule.emailService
     }
     
     return true
@@ -234,7 +232,7 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
 // Função para enviar emails em background
 async function sendRegistrationEmails(email: string, name: string, verificationToken: string): Promise<void> {
   try {
-    if (!sendVerificationEmail || !sendWelcomeEmail) {
+    if (!emailService) {
       logger.warn('⚠️ [REGISTER] Serviços de email não disponíveis')
       return
     }
@@ -243,25 +241,34 @@ async function sendRegistrationEmails(email: string, name: string, verificationT
     
     logger.info(`📧 [REGISTER] Enviando emails para: ${email}`)
     
-    // Enviar email de verificação
-    const verificationResult = await sendVerificationEmail(email, name, verificationUrl)
+    // Enviar email de verificação usando emailService (API HTTP)
+    const verificationResult = await emailService.sendVerificationEmail({
+      to: email,
+      name: name,
+      verificationUrl: verificationUrl
+    })
     
-    if (verificationResult.success) {
-      logger.info(`✅ [REGISTER] Email de verificação enviado via ${verificationResult.provider}`)
+    if (verificationResult) {
+      logger.info(`✅ [REGISTER] Email de verificação enviado via MailerSend API`)
       
-      // Enviar email de boas-vindas após verificação
+      // Enviar email de boas-vindas após verificação (se disponível)
       setTimeout(async () => {
         try {
-          const welcomeResult = await sendWelcomeEmail(email, name)
-          if (welcomeResult.success) {
-            logger.info(`✅ [REGISTER] Email de boas-vindas enviado via ${welcomeResult.provider}`)
+          if (emailService.sendWelcomeEmail) {
+            const welcomeResult = await emailService.sendWelcomeEmail({
+              to: email,
+              name: name
+            })
+            if (welcomeResult) {
+              logger.info(`✅ [REGISTER] Email de boas-vindas enviado`)
+            }
           }
         } catch (error) {
           logger.error('❌ [REGISTER] Erro ao enviar email de boas-vindas:', error)
         }
       }, 2000)
     } else {
-      logger.error('❌ [REGISTER] Falha no envio do email de verificação:', verificationResult.error)
+      logger.error('❌ [REGISTER] Falha no envio do email de verificação')
     }
   } catch (error) {
     logger.error('❌ [REGISTER] Erro no processo de envio de emails:', error)
