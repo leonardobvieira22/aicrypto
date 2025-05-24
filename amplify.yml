@@ -118,11 +118,19 @@ frontend:
         # Gerar Prisma Client para produção
         - echo "🗄️ Configurando Prisma para produção..."
         - |
-          echo "Gerando Prisma Client..."
-          npx prisma generate || {
+          echo "Configurando binary targets para AWS Lambda..."
+          echo "Binary targets: native, rhel-openssl-1.0.x, rhel-openssl-3.0.x"
+          
+          echo "Gerando Prisma Client com targets corretos..."
+          npx prisma generate --generator client || {
             echo "❌ Erro ao gerar Prisma Client"
             exit 1
           }
+          
+          echo "Verificando Prisma Client gerado..."
+          ls -la node_modules/.prisma/client/ || echo "Diretório .prisma/client não encontrado"
+          ls -la node_modules/@prisma/client/ || echo "Diretório @prisma/client não encontrado"
+          
           echo "✅ Prisma Client gerado com sucesso"
         
         - echo "✅ preBuild concluído com sucesso!"

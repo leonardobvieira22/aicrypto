@@ -123,8 +123,19 @@ export async function testDatabaseConnection(retries = 3): Promise<boolean> {
       await prisma.$queryRaw`SELECT 1`
       console.log('✅ [DATABASE] Conexão com banco de dados estabelecida')
       return true
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ [DATABASE] Tentativa ${attempt}/${retries} falhou:`, error)
+      
+      // Detectar erro específico de binary target
+      if (error?.message?.includes('could not locate the Query Engine for runtime') || 
+          error?.message?.includes('binaryTargets')) {
+        console.error('🚨 [DATABASE] ERRO CRÍTICO: Prisma Client foi gerado com binary targets incorretos!')
+        console.error('💡 [DATABASE] Solução: Adicione "rhel-openssl-1.0.x" aos binaryTargets no schema.prisma')
+        console.error('📋 [DATABASE] Binary targets requeridos: ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]')
+        
+        // Para este erro específico, não vale a pena tentar novamente
+        return false
+      }
       
       if (attempt === retries) {
         console.error('❌ [DATABASE] Todas as tentativas de conexão falharam')
