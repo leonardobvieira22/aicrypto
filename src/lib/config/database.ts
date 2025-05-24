@@ -21,39 +21,23 @@ function validateEnvironment() {
   }
 }
 
-// Configurações otimizadas para diferentes ambientes
+// Configuração do Prisma Client
 function getDatabaseConfig() {
-  const baseConfig = {
+  return {
+    log: isDevelopment ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
         url: process.env.DATABASE_URL
       }
-    }
-  }
-
-  if (isProduction && isAWSLambda) {
-    // Configuração otimizada para AWS Lambda
-    return {
-      ...baseConfig,
-      log: ['error'] as const,
-      errorFormat: 'minimal' as const,
-    }
-  }
-
-  if (isDevelopment) {
-    // Configuração para desenvolvimento
-    return {
-      ...baseConfig,
-      log: ['query', 'info', 'warn', 'error'] as const,
-      errorFormat: 'pretty' as const,
-    }
-  }
-
-  // Configuração padrão
-  return {
-    ...baseConfig,
-    log: ['error'] as const,
-    errorFormat: 'minimal' as const,
+    },
+    // Configurações de conexão para AWS Lambda
+    ...(isAWSLambda && {
+      connectionLimit: 1,
+      pool: {
+        min: 0,
+        max: 1
+      }
+    })
   }
 }
 

@@ -77,7 +77,10 @@ function createVerificationUrl(token: string): string {
 // Função para verificar se email já existe
 async function checkEmailExists(email: string): Promise<boolean> {
   try {
-    if (!prisma) return false
+    if (!prisma) {
+      console.error('❌ [REGISTER] Prisma não disponível para verificar email')
+      return false
+    }
     
     const user = await prisma.user.findUnique({
       where: { email },
@@ -93,7 +96,10 @@ async function checkEmailExists(email: string): Promise<boolean> {
 // Função para verificar se CPF já existe
 async function checkCpfExists(cpf: string): Promise<boolean> {
   try {
-    if (!prisma) return false
+    if (!prisma) {
+      console.error('❌ [REGISTER] Prisma não disponível para verificar CPF')
+      return false
+    }
     
     const user = await prisma.user.findUnique({
       where: { cpf },
@@ -110,7 +116,7 @@ async function checkCpfExists(cpf: string): Promise<boolean> {
 async function createUserDefaults(userId: string): Promise<void> {
   try {
     if (!prisma) {
-      console.log('⚠️ [REGISTER] Prisma não disponível para criar configurações padrão')
+      console.error('❌ [REGISTER] Prisma não disponível para criar configurações padrão')
       return
     }
     
