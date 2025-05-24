@@ -8,6 +8,36 @@ import bcrypt from 'bcryptjs'
 import { AuthOptions } from 'next-auth'
 import logger from '@/lib/logger'
 
+// Validação de variáveis de ambiente
+function validateAuthEnvironment() {
+  const errors: string[] = []
+  
+  if (!process.env.NEXTAUTH_SECRET) {
+    errors.push('NEXTAUTH_SECRET é obrigatória')
+  }
+  
+  if (!process.env.NEXTAUTH_URL) {
+    errors.push('NEXTAUTH_URL é obrigatória')
+  }
+  
+  if (errors.length > 0) {
+    const errorMessage = `❌ [AUTH] Erro de configuração:\n${errors.map(e => `  - ${e}`).join('\n')}`
+    console.error(errorMessage)
+    throw new Error(errorMessage)
+  }
+}
+
+// Validar ambiente na inicialização
+try {
+  validateAuthEnvironment()
+} catch (error) {
+  console.error('[AUTH] Erro na validação do ambiente:', error)
+  // Em produção, não devemos continuar sem as variáveis corretas
+  if (process.env.NODE_ENV === 'production') {
+    throw error
+  }
+}
+
 // Configuração robusta do NextAuth
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -20,6 +50,7 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          logger.error('[AUTH] Credenciais inválidas fornecidas')
           throw new Error('Credenciais inválidas')
         }
 
@@ -29,23 +60,29 @@ export const authOptions: AuthOptions = {
           })
 
           if (!user) {
+            logger.warn(`[AUTH] Tentativa de login com email não encontrado: ${credentials.email}`)
             throw new Error('Usuário não encontrado')
           }
 
           if (!user.password) {
+            logger.warn(`[AUTH] Usuário ${credentials.email} não tem senha configurada`)
             throw new Error('Conta não configurada com senha')
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password)
 
           if (!isValid) {
+            logger.warn(`[AUTH] Senha incorreta para usuário: ${credentials.email}`)
             throw new Error('Senha incorreta')
           }
 
-          if (!user.active) {
+          if (!user.isActive) {
+            logger.warn(`[AUTH] Tentativa de login com conta desativada: ${credentials.email}`)
             throw new Error('Conta desativada')
           }
 
+          logger.info(`[AUTH] Login bem-sucedido para usuário: ${credentials.email}`)
+          
           return {
             id: user.id,
             email: user.email,
@@ -58,14 +95,19 @@ export const authOptions: AuthOptions = {
         }
       }
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-    }),
-    GithubProvider({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!
-    })
+    // Providers OAuth opcionais (apenas se as variáveis estiverem configuradas)
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET
+      })
+    ] : []),
+    ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET ? [
+      GithubProvider({
+        clientId: process.env.GITHUB_ID,
+        clientSecret: process.env.GITHUB_SECRET
+      })
+    ] : [])
   ],
   session: {
     strategy: 'jwt',
@@ -85,6 +127,16 @@ export const authOptions: AuthOptions = {
         session.user.role = token.role
       }
       return session
+    },
+    async signIn({ user, account, profile }) {
+      try {
+        // Log de tentativa de login
+        logger.info(`[AUTH] Tentativa de login: ${user.email} via ${account?.provider}`)
+        return true
+      } catch (error) {
+        logger.error('[AUTH] Erro no callback signIn:', error)
+        return false
+      }
     }
   },
   pages: {
@@ -92,7 +144,21 @@ export const authOptions: AuthOptions = {
     signOut: '/auth/signout',
     error: '/auth/error'
   },
-  debug: process.env.NODE_ENV === 'development'
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
+  // Configurações de segurança para produção
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  }
 }
 
 const handler = NextAuth(authOptions)

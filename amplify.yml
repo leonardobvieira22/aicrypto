@@ -16,55 +16,97 @@ frontend:
         - echo "📦 Instalando Bun..."
         - npm install -g bun || (echo "⚠️ Falha ao instalar Bun, usando npm..." && export USE_NPM=true)
         
-        # Verificar variáveis de ambiente essenciais
+        # Verificar e validar variáveis de ambiente essenciais
         - echo "🔐 Verificando variáveis de ambiente..."
         - |
+          echo "=== VERIFICAÇÃO DE VARIÁVEIS DE AMBIENTE ==="
+          echo "DATABASE_URL: ${DATABASE_URL:0:20}..." # Mostra apenas os primeiros 20 caracteres por segurança
+          echo "NEXTAUTH_URL: $NEXTAUTH_URL"
+          echo "NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:0:10}..." # Mostra apenas os primeiros 10 caracteres
+          echo "ADMIN_EMAIL: $ADMIN_EMAIL"
+          echo "NEXT_PUBLIC_BINANCE_API_KEY: ${NEXT_PUBLIC_BINANCE_API_KEY:0:10}..."
+          echo "MAILERSEND_API_TOKEN: ${MAILERSEND_API_TOKEN:0:10}..."
+          echo "JWT_SECRET: ${JWT_SECRET:0:10}..."
+          echo "============================================="
+        
+        # Validação obrigatória das variáveis críticas
+        - |
           if [ -z "$DATABASE_URL" ]; then
-            echo "⚠️ AVISO: DATABASE_URL não configurada - usando modo mock"
-            export DATABASE_URL="file:./dev.db"
+            echo "❌ ERRO CRÍTICO: DATABASE_URL não configurada"
+            exit 1
           else
             echo "✅ DATABASE_URL configurada"
           fi
         - |
           if [ -z "$NEXTAUTH_SECRET" ]; then
-            echo "⚠️ AVISO: NEXTAUTH_SECRET não configurada - gerando temporária"
-            export NEXTAUTH_SECRET="amplify-build-temp-secret-$(date +%s)"
+            echo "❌ ERRO CRÍTICO: NEXTAUTH_SECRET não configurada"
+            exit 1
           else
             echo "✅ NEXTAUTH_SECRET configurada"
           fi
         - |
-          if [ -z "$NEXT_PUBLIC_BINANCE_API_KEY" ]; then
-            echo "⚠️ AVISO: NEXT_PUBLIC_BINANCE_API_KEY não configurada"
-            export NEXT_PUBLIC_BINANCE_API_KEY="demo-key"
+          if [ -z "$JWT_SECRET" ]; then
+            echo "❌ ERRO CRÍTICO: JWT_SECRET não configurada"
+            exit 1
           else
-            echo "✅ NEXT_PUBLIC_BINANCE_API_KEY configurada"
+            echo "✅ JWT_SECRET configurada"
           fi
         
-        # Gerar Prisma Client se possível
-        - echo "🗄️ Configurando Prisma..."
+        # Criar arquivo .env.production com todas as variáveis necessárias
+        - echo "📝 Criando arquivo .env.production..."
         - |
-          if [ -f "prisma/schema.prisma" ]; then
-            echo "📄 Schema Prisma encontrado, gerando client..."
-            npx prisma generate || echo "⚠️ Falha ao gerar Prisma Client - usando mock"
-          else
-            echo "ℹ️ Schema Prisma não encontrado - usando configuração mock"
-          fi
+          cat > .env.production << EOF
+          # Configuração de Produção - AWS Amplify
+          NODE_ENV=production
+          
+          # Banco de Dados
+          DATABASE_URL=$DATABASE_URL
+          
+          # NextAuth.js
+          NEXTAUTH_URL=$NEXTAUTH_URL
+          NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+          
+          # JWT
+          JWT_SECRET=$JWT_SECRET
+          
+          # Email
+          MAILERSEND_API_TOKEN=$MAILERSEND_API_TOKEN
+          ADMIN_EMAIL=$ADMIN_EMAIL
+          
+          # Binance API
+          NEXT_PUBLIC_BINANCE_API_KEY=$NEXT_PUBLIC_BINANCE_API_KEY
+          BINANCE_API_SECRET=$BINANCE_API_SECRET
+          
+          # URLs Públicas
+          NEXT_PUBLIC_APP_URL=$NEXTAUTH_URL
+          NEXTAUTH_URL=$NEXTAUTH_URL
+          
+          # Build Config
+          NEXT_TELEMETRY_DISABLED=1
+          AWS_AMPLIFY_BUILD=true
+          EOF
+        
+        - echo "📄 Conteúdo de .env.production criado:"
+        - cat .env.production
         
         # Instalar dependências
         - echo "📦 Instalando dependências..."
         - |
           if [ "$USE_NPM" = "true" ]; then
-            npm ci
+            npm ci --production=false
           else
-            bun install --frozen-lockfile || npm ci
+            bun install --frozen-lockfile || npm ci --production=false
           fi
         
-        - echo "📝 Gerando arquivo .env.production a partir das variáveis de ambiente do Amplify"
-        # Exporta variáveis privadas e públicas que devem estar disponíveis em runtime (SSR e API Routes)
+        # Gerar Prisma Client para produção
+        - echo "🗄️ Configurando Prisma para produção..."
         - |
-          env | grep -E '^(DATABASE_URL|NEXTAUTH_URL|NEXTAUTH_SECRET|JWT_SECRET|MAILERSEND_API_TOKEN|ADMIN_EMAIL|BINANCE_API_KEY|BINANCE_API_SECRET|NEXT_PUBLIC_)' >> .env.production
-        - echo "📄 Conteúdo final de .env.production:"
-        - cat .env.production
+          echo "Gerando Prisma Client..."
+          npx prisma generate || {
+            echo "❌ Erro ao gerar Prisma Client"
+            exit 1
+          }
+          echo "✅ Prisma Client gerado com sucesso"
         
         - echo "✅ preBuild concluído com sucesso!"
         
@@ -77,13 +119,21 @@ frontend:
         - npx next --version || echo "Next.js não encontrado"
         - echo "🔧 Node.js:" && node --version
         
-        # Configurações de otimização
-        - echo "⚙️ Configurando otimizações..."
+        # Configurações de otimização para AWS Lambda
+        - echo "⚙️ Configurando otimizações para AWS Lambda..."
         - export NODE_OPTIONS="--max-old-space-size=4096"
         - export NEXT_TELEMETRY_DISABLED=1
+        - export AWS_AMPLIFY_BUILD=true
+        
+        # Verificar se o arquivo .env.production existe
+        - |
+          if [ ! -f ".env.production" ]; then
+            echo "❌ ERRO: Arquivo .env.production não encontrado"
+            exit 1
+          fi
         
         # Build da aplicação
-        - echo "🏗️ Executando build..."
+        - echo "🏗️ Executando build do Next.js..."
         - |
           if [ "$USE_NPM" = "true" ]; then
             npm run build
