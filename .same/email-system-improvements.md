@@ -21,7 +21,7 @@ ADMIN_EMAIL=seu-email@exemplo.com
 ## Implementações Concluídas
 
 ### 1. Configuração Correta da API MailerSend
-- Configurado token direto: `mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9`
+- Token configurado (removido por segurança)
 - Adicionada dependência node-fetch@2 para requisições HTTP
 - Aprimorado sistema de logs para facilitar diagnóstico de problemas
 

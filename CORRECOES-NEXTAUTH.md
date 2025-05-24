@@ -100,14 +100,14 @@ export const config = {
 ```env
 # NextAuth.js
 NEXTAUTH_URL="https://main.d34l4lklofiz4e.amplifyapp.com"
-NEXTAUTH_SECRET="crypto-trading-secret-key-2024-production"
+NEXTAUTH_SECRET="sua-chave-secreta-super-segura-aqui"
 
 # Banco de Dados
-DATABASE_URL="postgresql://neondb_owner:npg_pPqF8uoE6KYn@ep-gentle-boat-a56xil4c-pooler.us-east-2.aws.neon.tech/crypto_trading_db?sslmode=require"
+DATABASE_URL="postgresql://usuario:senha@host:porta/banco"
 
 # MailerSend
-MAILERSEND_API_TOKEN="mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9"
-MAILERSEND_DOMAIN="test-dnvo4d9mxy6g5r86.mlsender.net"
+MAILERSEND_API_TOKEN="seu-token-mailersend-aqui"
+MAILERSEND_DOMAIN="seu-dominio-verificado.mlsender.net"
 ```
 
 ### 4. ✅ API de Debug Criada (`src/app/api/debug/route.ts`)
