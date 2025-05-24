@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
+import { InteractiveChat } from "./InteractiveChat"
 
 export function Hero() {
   return (
@@ -77,50 +78,14 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Coluna de imagem/ilustração */}
+          {/* Coluna do Chat Interativo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7 }}
             className="relative"
           >
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#EBF8FF] to-[#d8f3ff] flex items-center justify-center">
-                <div className="relative w-[90%] h-[85%] bg-white rounded-lg shadow-sm p-2">
-                  <div className="flex items-center gap-1.5 absolute top-3 left-3">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  </div>
-
-                  <div className="mt-6 px-2">
-                    <div className="h-12 w-full bg-[#5957D5] rounded-md flex items-center justify-center">
-                      <span className="text-white font-medium">Dashboard de Trading</span>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="bg-[#f9fafb] rounded-md p-3 h-24">
-                        <div className="w-full h-4 bg-[#E5E7EB] rounded mb-2"></div>
-                        <div className="w-2/3 h-4 bg-[#E5E7EB] rounded mb-2"></div>
-                        <div className="w-1/2 h-4 bg-[#E5E7EB] rounded"></div>
-                      </div>
-                      <div className="bg-[#f9fafb] rounded-md p-3 h-24">
-                        <div className="w-full h-16 bg-[#E5E7EB] rounded-md mb-2"></div>
-                        <div className="w-1/3 h-4 bg-[#E5E7EB] rounded"></div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 bg-[#f9fafb] rounded-md p-3 h-40">
-                      <div className="w-full h-full bg-[#E5E7EB] rounded-md flex items-center justify-center">
-                        <svg width="100" height="60" viewBox="0 0 100 60" className="text-[#5957D5]">
-                          <path d="M0,30 L20,40 L40,20 L60,50 L80,10 L100,30" fill="none" stroke="currentColor" strokeWidth="2" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <InteractiveChat />
 
             {/* Elementos decorativos */}
             <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#d8f3ff] rounded-full blur-2xl opacity-60"></div>
