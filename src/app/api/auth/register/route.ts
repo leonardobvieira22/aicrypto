@@ -360,7 +360,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     return NextResponse.json({
       success: true,
       message: 'Conta criada com sucesso! Verifique seu email para ativar a conta.',
-      data: {
+          data: {
         user: {
           id: user.id,
           name: user.name,

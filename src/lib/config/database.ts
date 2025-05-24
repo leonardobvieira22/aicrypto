@@ -5,6 +5,13 @@
 
 import { PrismaClient } from '@prisma/client'
 
+console.log('[DEBUG] Variáveis de ambiente no runtime:', {
+  DATABASE_URL: process.env.DATABASE_URL,
+  NODE_ENV: process.env.NODE_ENV,
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  // Adicione outras variáveis se necessário
+})
+
 // Configurações de ambiente
 const isDevelopment = process.env.NODE_ENV === 'development'
 const isProduction = process.env.NODE_ENV === 'production'
