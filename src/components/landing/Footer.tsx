@@ -56,11 +56,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#depoimentos" className="text-black hover:text-blue-highlight dark:hover:text-blue-highlight">
-                  Depoimentos
-                </Link>
-              </li>
-              <li>
                 <Link href="#faq" className="text-black hover:text-blue-highlight dark:hover:text-blue-highlight">
                   FAQ
                 </Link>
