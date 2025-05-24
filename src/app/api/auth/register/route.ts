@@ -240,6 +240,7 @@ async function sendRegistrationEmails(email: string, name: string, verificationT
     const verificationUrl = createVerificationUrl(verificationToken)
     
     logger.info(`📧 [REGISTER] Enviando emails para: ${email}`)
+    logger.info(`🔧 [REGISTER] Usando emailService (API HTTP) - Cache quebrado v2`)
     
     // Enviar email de verificação usando emailService (API HTTP)
     const verificationResult = await emailService.sendVerificationEmail({
