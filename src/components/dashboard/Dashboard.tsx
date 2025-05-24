@@ -700,39 +700,19 @@ export default function Dashboard() {
           <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
             {/* Cabeçalho do Gráfico */}
             <div className="flex flex-col space-y-4 p-6 border-b border-gray-700/30">
-              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                {/* Seção Principal do Título */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <CandlestickChart className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">
-                        {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
-                      </h2>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                        <span className="text-xs text-gray-400">Dados em tempo real</span>
-                      </div>
-                    </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                {/* Título e Ícone Centralizados */}
+                <div className="flex items-center justify-center sm:justify-start space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <CandlestickChart className="h-5 w-5 text-white" />
                   </div>
-
-                  {/* Info adicional - Desktop */}
-                  <div className="hidden lg:flex items-center space-x-4">
-                    <div className="flex items-center space-x-2 bg-gray-800/40 rounded-lg px-3 py-2">
-                      <Eye className="h-4 w-4 text-blue-400" />
-                      <span className="text-xs text-gray-300">Análise Técnica</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-gray-800/40 rounded-lg px-3 py-2">
-                      <RefreshCw className="h-4 w-4 text-green-400" />
-                      <span className="text-xs text-gray-300">Atualizado agora</span>
-                    </div>
-                  </div>
+                  <h2 className="text-xl font-bold text-white">
+                    {tradingPairs.find(p => p.value === selectedPair)?.label || "BTC/USDT"}
+                  </h2>
                 </div>
                 
                 {/* Controles */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                <div className="flex flex-row items-center justify-center sm:justify-end space-x-3">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-400 font-medium">Par:</span>
                     <select
@@ -762,15 +742,6 @@ export default function Dashboard() {
                       ))}
                     </select>
                   </div>
-
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                  >
-                    <Settings className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Configurar</span>
-                  </Button>
                 </div>
               </div>
             </div>
