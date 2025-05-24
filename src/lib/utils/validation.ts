@@ -105,8 +105,8 @@ export function cleanCPF(cpf: string): string {
  * @returns boolean indicando se o email é válido
  */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-  return emailRegex.test(email)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 /**
@@ -335,4 +335,111 @@ export function formatBrazilianPhone(phone: string): string {
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+}
+
+// Funções de validação simples para substituir Zod
+
+export function isValidPassword(password: string): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push('Senha deve ter pelo menos 8 caracteres');
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Senha deve conter pelo menos uma letra maiúscula');
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push('Senha deve conter pelo menos uma letra minúscula');
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('Senha deve conter pelo menos um número');
+  }
+  
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    errors.push('Senha deve conter pelo menos um caractere especial');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+export function validateResetPassword(data: {
+  token?: string;
+  password?: string;
+  confirmPassword?: string;
+}): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (!data.token || data.token.trim().length === 0) {
+    errors.push('Token inválido');
+  }
+  
+  if (!data.password) {
+    errors.push('Senha é obrigatória');
+  } else {
+    const passwordValidation = isValidPassword(data.password);
+    if (!passwordValidation.isValid) {
+      errors.push(...passwordValidation.errors);
+    }
+  }
+  
+  if (!data.confirmPassword) {
+    errors.push('Confirmação de senha é obrigatória');
+  } else if (data.password !== data.confirmPassword) {
+    errors.push('As senhas não coincidem');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+export function validateEmailRequest(data: {
+  email?: string;
+}): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (!data.email) {
+    errors.push('Email é obrigatório');
+  } else if (!isValidEmail(data.email)) {
+    errors.push('Email inválido');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+export function validateToken(data: {
+  token?: string;
+}): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (!data.token || data.token.trim().length === 0) {
+    errors.push('Token inválido');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 }

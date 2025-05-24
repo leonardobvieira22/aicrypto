@@ -1,23 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { z } from 'zod'
+import { prisma } from '@/lib/config/database'
+import { validateResetPassword } from '@/lib/utils/validation'
 import bcrypt from 'bcrypt'
-
-// Schema de validação para redefinição de senha
-const resetPasswordSchema = z.object({
-  token: z.string().min(1, { message: 'Token inválido' }),
-  password: z
-    .string()
-    .min(8, { message: 'Senha deve ter pelo menos 8 caracteres' })
-    .regex(/[A-Z]/, { message: 'Senha deve conter pelo menos uma letra maiúscula' })
-    .regex(/[a-z]/, { message: 'Senha deve conter pelo menos uma letra minúscula' })
-    .regex(/[0-9]/, { message: 'Senha deve conter pelo menos um número' })
-    .regex(/[^A-Za-z0-9]/, { message: 'Senha deve conter pelo menos um caractere especial' }),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'As senhas não coincidem',
-  path: ['confirmPassword'],
-})
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,15 +9,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar dados de entrada
-    const result = resetPasswordSchema.safeParse(body)
-    if (!result.success) {
+    const validation = validateResetPassword(body)
+    if (!validation.isValid) {
       return NextResponse.json(
-        { message: 'Dados inválidos', errors: result.error.errors },
+        { message: 'Dados inválidos', errors: validation.errors },
         { status: 400 }
       )
     }
 
-    const { token, password } = result.data
+    const { token, password } = body
 
     // Buscar usuário pelo token de redefinição
     const user = await prisma.user.findFirst({

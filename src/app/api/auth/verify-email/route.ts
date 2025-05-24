@@ -1,11 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { z } from 'zod'
-
-// Schema de validação para a verificação de email
-const verifyEmailSchema = z.object({
-  token: z.string().min(1, { message: 'Token inválido' }),
-})
+import { prisma } from '@/lib/config/database'
+import { validateToken } from '@/lib/utils/validation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,15 +8,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar dados de entrada
-    const result = verifyEmailSchema.safeParse(body)
-    if (!result.success) {
+    const validation = validateToken(body)
+    if (!validation.isValid) {
       return NextResponse.json(
-        { message: 'Token inválido', errors: result.error.errors },
+        { message: 'Token inválido', errors: validation.errors },
         { status: 400 }
       )
     }
 
-    const { token } = result.data
+    const { token } = body
 
     // Buscar usuário pelo token de verificação
     const user = await prisma.user.findFirst({

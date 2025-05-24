@@ -1,7 +1,21 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/config/database';
 import crypto from 'node:crypto';
-import { EmailStatus } from '@prisma/client';
+
+// Definir tipos de EmailStatus localmente (baseado no schema Prisma)
+type EmailStatus = 'PENDING' | 'SENT' | 'FAILED' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'BOUNCED' | 'SPAM' | 'BLOCKED';
+
+const EmailStatus = {
+  PENDING: 'PENDING' as const,
+  SENT: 'SENT' as const,
+  FAILED: 'FAILED' as const,
+  DELIVERED: 'DELIVERED' as const,
+  OPENED: 'OPENED' as const,
+  CLICKED: 'CLICKED' as const,
+  BOUNCED: 'BOUNCED' as const,
+  SPAM: 'SPAM' as const,
+  BLOCKED: 'BLOCKED' as const
+};
 
 // MailerSend webhook secret - deve ser configurado no painel do MailerSend
 // Você deve copiar esta chave no painel do MailerSend ao configurar o webhook
@@ -87,11 +101,11 @@ export async function POST(req: NextRequest) {
         emailStatus = EmailStatus.SPAM;
         break;
       case 'activity.unsubscribed':
-        // EmailStatus.UNSUBSCRIBED não existe no enum, apenas ignore ou trate como undefined
+        // Para eventos não suportados, apenas ignore
         emailStatus = undefined;
         break;
       default:
-        // Para eventos não suportados pelo enum, defina como undefined ou trate conforme necessário
+        // Para eventos não suportados, defina como undefined
         emailStatus = undefined;
     }
 
@@ -115,16 +129,18 @@ export async function POST(req: NextRequest) {
 
     // Atualizar todos os logs encontrados com o messageId
     for (const log of logs) {
-      await prisma.emailLog.update({
-        where: { id: log.id },
-        data: {
-          status: emailStatus,
-          statusDetails: statusDetails || log.statusDetails,
-          updatedAt: new Date()
-        }
-      });
+      if (emailStatus) {
+        await prisma.emailLog.update({
+          where: { id: log.id },
+          data: {
+            status: emailStatus,
+            statusDetails: statusDetails || log.statusDetails,
+            updatedAt: new Date()
+          }
+        });
 
-      console.log(`Status do email atualizado: ${log.id} -> ${emailStatus}`);
+        console.log(`Status do email atualizado: ${log.id} -> ${emailStatus}`);
+      }
     }
 
     return NextResponse.json({ message: 'Webhook processado com sucesso' });

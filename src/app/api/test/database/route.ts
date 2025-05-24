@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-
-// Configurar ambiente de runtime para produção
-import '@/lib/env-runtime'
+import { prisma } from '@/lib/config/database'
 
 export async function GET(req: NextRequest) {
   console.log('🧪 [TEST-DB] Iniciando teste de banco de dados...');

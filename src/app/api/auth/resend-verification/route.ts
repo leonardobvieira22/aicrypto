@@ -1,13 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { z } from 'zod'
-import { isValidEmail } from '@/lib/utils/validation'
+import { prisma } from '@/lib/config/database'
+import { validateEmailRequest } from '@/lib/utils/validation'
 import { randomUUID } from 'node:crypto'
-
-// Schema de validação para reenvio de email
-const resendVerificationSchema = z.object({
-  email: z.string().email({ message: 'Email inválido' }),
-})
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,15 +9,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar dados de entrada
-    const result = resendVerificationSchema.safeParse(body)
-    if (!result.success) {
+    const validation = validateEmailRequest(body)
+    if (!validation.isValid) {
       return NextResponse.json(
-        { message: 'Email inválido', errors: result.error.errors },
+        { message: 'Email inválido', errors: validation.errors },
         { status: 400 }
       )
     }
 
-    const { email } = result.data
+    const { email } = body
 
     // Verificar se o usuário existe
     const user = await prisma.user.findUnique({

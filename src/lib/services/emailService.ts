@@ -1,6 +1,6 @@
 import * as nodemailer from 'nodemailer';
 import fetch from 'node-fetch';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/config/database';
 
 // Importar tipos e constantes de email do cliente Prisma
 type EmailStatus = 'PENDING' | 'SENT' | 'FAILED' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'BOUNCED' | 'SPAM' | 'BLOCKED';

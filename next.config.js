@@ -59,13 +59,9 @@ const nextConfig = {
   
   // Configurações de produção
   reactStrictMode: true,
-  swcMinify: true, // Usar SWC para minificação (mais rápido)
   
-  // Configurações específicas para AWS Lambda/Amplify
-  experimental: {
-    // Otimizações para serverless
-    serverComponentsExternalPackages: ['@prisma/client'],
-  },
+  // Configurações específicas para AWS Lambda/Amplify (Next.js 15)
+  serverExternalPackages: ['@prisma/client'],
   
   // Configuração de output para AWS Amplify
   output: 'standalone',
