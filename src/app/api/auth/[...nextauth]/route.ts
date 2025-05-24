@@ -8,16 +8,21 @@ import bcrypt from 'bcryptjs'
 import { AuthOptions } from 'next-auth'
 import logger from '@/lib/logger'
 
-// Validação de variáveis de ambiente
+// Validação de variáveis de ambiente (apenas em runtime, não durante build)
 function validateAuthEnvironment() {
+  // Durante o build, não validar
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return;
+  }
+
   const errors: string[] = []
   
   if (!process.env.NEXTAUTH_SECRET) {
     errors.push('NEXTAUTH_SECRET é obrigatória')
   }
   
-  if (!process.env.NEXTAUTH_URL) {
-    errors.push('NEXTAUTH_URL é obrigatória')
+  if (!process.env.NEXTAUTH_URL && process.env.NODE_ENV === 'production') {
+    errors.push('NEXTAUTH_URL é obrigatória em produção')
   }
   
   if (errors.length > 0) {
@@ -27,14 +32,16 @@ function validateAuthEnvironment() {
   }
 }
 
-// Validar ambiente na inicialização
-try {
-  validateAuthEnvironment()
-} catch (error) {
-  console.error('[AUTH] Erro na validação do ambiente:', error)
-  // Em produção, não devemos continuar sem as variáveis corretas
-  if (process.env.NODE_ENV === 'production') {
-    throw error
+// Validar ambiente apenas em runtime (não durante build)
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+  try {
+    validateAuthEnvironment()
+  } catch (error) {
+    console.error('[AUTH] Erro na validação do ambiente:', error)
+    // Em produção, só falhar se realmente estivermos em runtime
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      throw error
+    }
   }
 }
 

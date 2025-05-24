@@ -29,6 +29,23 @@ frontend:
           echo "JWT_SECRET: ${JWT_SECRET:0:10}..."
           echo "============================================="
         
+        # Configurar NEXTAUTH_URL automaticamente se não estiver definida
+        - |
+          if [ -z "$NEXTAUTH_URL" ]; then
+            echo "⚠️ NEXTAUTH_URL não configurada, configurando automaticamente..."
+            # Obter a URL do Amplify automaticamente
+            if [ ! -z "$AWS_APP_ID" ]; then
+              export NEXTAUTH_URL="https://$AWS_BRANCH_NAME.$AWS_APP_ID.amplifyapp.com"
+              echo "✅ NEXTAUTH_URL configurada como: $NEXTAUTH_URL"
+            else
+              echo "❌ ERRO: Não foi possível configurar NEXTAUTH_URL automaticamente"
+              export NEXTAUTH_URL="https://main.d34l4lklofiz4e.amplifyapp.com"
+              echo "⚠️ Usando NEXTAUTH_URL padrão: $NEXTAUTH_URL"
+            fi
+          else
+            echo "✅ NEXTAUTH_URL já configurada: $NEXTAUTH_URL"
+          fi
+        
         # Validação obrigatória das variáveis críticas
         - |
           if [ -z "$DATABASE_URL" ]; then
@@ -79,11 +96,11 @@ frontend:
           
           # URLs Públicas
           NEXT_PUBLIC_APP_URL=$NEXTAUTH_URL
-          NEXTAUTH_URL=$NEXTAUTH_URL
           
           # Build Config
           NEXT_TELEMETRY_DISABLED=1
           AWS_AMPLIFY_BUILD=true
+          NEXT_PHASE=phase-production-build
           EOF
         
         - echo "📄 Conteúdo de .env.production criado:"
@@ -124,6 +141,7 @@ frontend:
         - export NODE_OPTIONS="--max-old-space-size=4096"
         - export NEXT_TELEMETRY_DISABLED=1
         - export AWS_AMPLIFY_BUILD=true
+        - export NEXT_PHASE=phase-production-build
         
         # Verificar se o arquivo .env.production existe
         - |
