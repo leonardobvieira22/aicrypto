@@ -22,7 +22,7 @@ MAILERSEND_API_TOKEN=seu-token-mailersend-aqui
 DATABASE_URL=postgresql://usuario:senha@host:porta/banco
 
 # ❌ INCORRETO - Nunca fazer isso
-MAILERSEND_API_TOKEN=mlsn.b928d6b97328b42846ba4f9841fa4fbd7b4fbf0e63582d17589e0a0e05c1c3f9
+MAILERSEND_API_TOKEN=mlsn.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 ### **2. Arquivos Protegidos no .gitignore**

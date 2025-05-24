@@ -1,4 +1,22 @@
-# Resumo das Melhorias no Sistema de Email
+# Melhorias do Sistema de Email
+
+## Configurações Implementadas
+
+- Configurado token removido por segurança
+- Domínio verificado: test-dnvo4d9mxy6g5r86.mlsender.net
+- Email remetente: noreply@test-dnvo4d9mxy6g5r86.mlsender.net
+
+## ⚠️ AVISO DE SEGURANÇA
+
+**CREDENCIAIS REMOVIDAS:** Este arquivo foi limpo por segurança.
+
+### Configuração Correta:
+```bash
+MAILERSEND_API_TOKEN=seu-token-aqui
+MAILERSEND_DOMAIN=seu-dominio-verificado.mlsender.net
+EMAIL_FROM=noreply@seu-dominio-verificado.mlsender.net
+ADMIN_EMAIL=seu-email@exemplo.com
+```
 
 ## Implementações Concluídas
 
