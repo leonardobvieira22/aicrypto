@@ -241,7 +241,8 @@ export function ConnectionErrorState({
           <div className="flex items-center space-x-1">
             <Smartphone className="h-3 w-3 sm:hidden" />
             <Monitor className="h-3 w-3 hidden sm:block" />
-            <span>Interface otimizada para {typeof window !== 'undefined' && window.innerWidth < 640 ? 'mobile' : 'desktop'}</span>
+            <span className="sm:hidden">Interface mobile otimizada</span>
+            <span className="hidden sm:inline">Interface desktop otimizada</span>
           </div>
         </div>
       </div>

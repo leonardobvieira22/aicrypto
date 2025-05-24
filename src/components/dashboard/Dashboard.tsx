@@ -360,6 +360,12 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
       console.log('Chart já foi removido ou não existe')
     }
 
+    // Função auxiliar para obter dimensões responsivas
+    const getResponsiveHeight = () => {
+      if (typeof window === 'undefined') return 450 // Valor padrão para SSR
+      return window.innerWidth < 640 ? 350 : 450
+    }
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -370,7 +376,7 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
         horzLines: { color: 'rgba(55, 65, 81, 0.2)' },
       },
       width: chartContainerRef.current.clientWidth,
-      height: window.innerWidth < 640 ? 350 : 450, // Altura responsiva para mobile
+      height: getResponsiveHeight(), // Usando função auxiliar
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
@@ -392,10 +398,10 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
     })
 
     const handleResize = () => {
-      if (chartContainerRef.current) {
+      if (chartContainerRef.current && typeof window !== 'undefined') {
         chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: window.innerWidth < 640 ? 350 : 450
+          height: getResponsiveHeight()
         })
       }
     }
@@ -411,10 +417,15 @@ const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
     chartRef.current = chart
     seriesRef.current = candlestickSeries
 
-    window.addEventListener('resize', handleResize)
+    // Só adicionar listeners no cliente
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize)
+    }
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize)
+      }
       try {
         chart.remove()
       } catch (error) {
@@ -653,6 +664,12 @@ const CryptoIcon = ({ symbol }: { symbol: string }) => {
 export default function Dashboard() {
   const [selectedPair, setSelectedPair] = useState("BTCUSDT")
   const [selectedInterval, setSelectedInterval] = useState("1m")
+  const [isClient, setIsClient] = useState(false)
+
+  // Garantir que componentes dependentes do browser só renderizem no cliente
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const tradingPairs = [
     { value: "BTCUSDT", label: "BTC/USDT", color: "from-orange-500 to-orange-600" },
@@ -672,6 +689,39 @@ export default function Dashboard() {
   ]
 
   const getCurrentPair = () => tradingPairs.find(p => p.value === selectedPair) || tradingPairs[0]
+
+  // Renderizar um placeholder durante a hidratação
+  if (!isClient) {
+    return (
+      <div className="space-y-6 max-w-full overflow-x-hidden">
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+            <p className="text-gray-400 mt-1">
+              Bem-vindo de volta, <span className="text-blue-400">João Silva</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl border border-gray-700/50 p-6 animate-pulse">
+              <div className="h-16 bg-gray-700/50 rounded"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Chart Loading */}
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-2xl border border-gray-700/30 backdrop-blur-sm p-6">
+          <div className="h-96 bg-gray-700/30 rounded-xl animate-pulse flex items-center justify-center">
+            <div className="text-gray-400">Carregando interface...</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-full overflow-x-hidden">

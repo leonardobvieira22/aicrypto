@@ -144,12 +144,21 @@ const DEFAULT_RETRY_DELAY = 3000
 const DEFAULT_HEARTBEAT_INTERVAL = 30000
 const MAX_MESSAGE_TIMEOUT = 60000 // 1 minuto sem mensagens = conexão morta
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 // Estado global para gerenciar as conexões WebSocket aprimorado
 export const useBinanceWebSocket = create<BinanceWebSocketManager>((set, get) => ({
   connections: new Map(),
 
   // Função auxiliar para criar uma nova conexão
   createConnection: (streamName: string, config: WebSocketConfig) => {
+    // Só criar conexões no cliente
+    if (!isClient()) {
+      console.warn('⚠️ [BINANCE_WS] Tentativa de criar WebSocket no servidor ignorada')
+      return
+    }
+
     const {
       maxRetries = DEFAULT_MAX_RETRIES,
       retryDelay = DEFAULT_RETRY_DELAY,

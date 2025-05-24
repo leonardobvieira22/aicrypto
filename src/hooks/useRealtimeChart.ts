@@ -24,6 +24,9 @@ export interface RealtimeChartState {
   connectionQuality: 'excellent' | 'good' | 'poor' | 'offline'
 }
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 export function useRealtimeChart(options: RealtimeChartOptions) {
   const {
     symbol,
@@ -66,6 +69,8 @@ export function useRealtimeChart(options: RealtimeChartOptions) {
 
   // Função para configurar timer de inatividade
   const setupInactivityTimer = useCallback(() => {
+    if (!isClient()) return // Não configurar timers no servidor
+    
     clearTimers()
     
     inactivityTimerRef.current = setTimeout(() => {
@@ -123,6 +128,11 @@ export function useRealtimeChart(options: RealtimeChartOptions) {
 
   // Função para conectar
   const connect = useCallback(() => {
+    if (!isClient()) {
+      console.warn('⚠️ [REALTIME_CHART] Tentativa de conexão no servidor ignorada')
+      return
+    }
+
     if (!connectionManager.status.isOnline) {
       setState(prev => ({
         ...prev,
@@ -292,7 +302,7 @@ export function useRealtimeChart(options: RealtimeChartOptions) {
 
   // Conectar automaticamente quando o hook é inicializado
   useEffect(() => {
-    if (connectionManager.status.isOnline) {
+    if (isClient() && connectionManager.status.isOnline) {
       connect()
     }
 
@@ -303,6 +313,8 @@ export function useRealtimeChart(options: RealtimeChartOptions) {
 
   // Monitorar mudanças na conectividade
   useEffect(() => {
+    if (!isClient()) return
+
     if (connectionManager.status.isOnline && !state.isConnected && !state.isConnecting) {
       connect()
     } else if (!connectionManager.status.isOnline && state.isConnected) {

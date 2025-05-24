@@ -22,6 +22,14 @@ export interface UseConnectionOptions {
   enableHeartbeat?: boolean
 }
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
+// Função auxiliar para obter o status online de forma segura
+const getNavigatorOnline = () => {
+  return isClient() ? navigator.onLine : false
+}
+
 export function useConnection(options: UseConnectionOptions = {}) {
   const {
     maxRetries = 5,
@@ -33,14 +41,15 @@ export function useConnection(options: UseConnectionOptions = {}) {
     enableHeartbeat = true
   } = options
 
+  // Estado inicial seguro para SSR
   const [status, setStatus] = useState<ConnectionStatus>({
-    isOnline: navigator.onLine,
+    isOnline: false, // Valor padrão seguro para SSR
     isConnecting: false,
     hasError: false,
     errorMessage: null,
     lastConnected: null,
     reconnectAttempts: 0,
-    connectionQuality: navigator.onLine ? 'good' : 'offline'
+    connectionQuality: 'offline' // Valor padrão seguro para SSR
   })
 
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -48,9 +57,21 @@ export function useConnection(options: UseConnectionOptions = {}) {
   const lastPingTimeRef = useRef<number>(Date.now())
   const isManuallyDisconnectedRef = useRef(false)
 
+  // Inicializar estado correto no cliente após montagem
+  useEffect(() => {
+    if (isClient()) {
+      const initialOnlineStatus = getNavigatorOnline()
+      setStatus(prev => ({
+        ...prev,
+        isOnline: initialOnlineStatus,
+        connectionQuality: initialOnlineStatus ? 'good' : 'offline'
+      }))
+    }
+  }, [])
+
   // Função para testar a qualidade da conexão
   const testConnectionQuality = useCallback(async (): Promise<'excellent' | 'good' | 'poor' | 'offline'> => {
-    if (!navigator.onLine) return 'offline'
+    if (!isClient() || !getNavigatorOnline()) return 'offline'
 
     try {
       const startTime = performance.now()
@@ -75,6 +96,11 @@ export function useConnection(options: UseConnectionOptions = {}) {
 
   // Função para conectar
   const connect = useCallback(async (isRetry = false) => {
+    if (!isClient()) {
+      console.warn('⚠️ [CONNECTION] Tentativa de conexão no servidor ignorada')
+      return
+    }
+
     if (status.isConnecting && !isRetry) return
     
     isManuallyDisconnectedRef.current = false
@@ -190,7 +216,7 @@ export function useConnection(options: UseConnectionOptions = {}) {
 
   // Heartbeat para monitorar a conexão
   useEffect(() => {
-    if (!enableHeartbeat || !status.isOnline) return
+    if (!isClient() || !enableHeartbeat || !status.isOnline) return
 
     heartbeatIntervalRef.current = setInterval(async () => {
       try {
@@ -231,6 +257,8 @@ export function useConnection(options: UseConnectionOptions = {}) {
 
   // Monitorar mudanças na conectividade do navegador
   useEffect(() => {
+    if (!isClient()) return
+
     const handleOnline = () => {
       if (!isManuallyDisconnectedRef.current) {
         connect()
