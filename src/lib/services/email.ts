@@ -37,14 +37,20 @@ async function sendWithSMTP(emailData: EmailData): Promise<EmailResult> {
     }
     
     // Configurar transporter para MailerSend via SMTP
+    // MailerSend SMTP não usa username/password tradicionais
+    // Usa o domínio como usuário e o token como senha
     const transporter = nodemailer.createTransport({
       host: 'smtp.mailersend.net',
       port: 587,
       secure: false,
       auth: {
-        user: 'MS_SMTP_USER', // Usuário SMTP do MailerSend
-        pass: MAILERSEND_API_TOKEN,
+        user: MAILERSEND_DOMAIN, // Usar o domínio verificado como usuário
+        pass: MAILERSEND_API_TOKEN, // Token como senha
       },
+      // Configurações adicionais para MailerSend
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
     })
     
     // Enviar email

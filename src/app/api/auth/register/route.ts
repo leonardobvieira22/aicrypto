@@ -123,38 +123,48 @@ async function createUserDefaults(userId: string): Promise<void> {
     
     logger.info(`🔧 [REGISTER] Criando configurações padrão para usuário: ${userId}`)
     
-    // Criar configurações de trading
+    // Criar configurações de trading com campos corretos do schema
     await prisma.tradingSetting.create({
       data: {
         userId,
         riskLevel: 'MEDIUM',
-        maxDailyLoss: 100.0,
-        maxPositionSize: 1000.0,
+        defaultOrderSize: 5.0,
+        maxOpenPositions: 5,
+        defaultLeverage: 1.0,
+        enableStopLoss: true,
         stopLossPercentage: 5.0,
-        takeProfitPercentage: 10.0,
-        tradingPairs: ['BTCUSDT', 'ETHUSDT'],
-        isActive: false
+        enableTakeProfit: true,
+        takeProfitPercentage: 15.0,
+        tradingPairs: ['BTCUSDT', 'ETHUSDT']
       }
     })
     
-    // Criar carteira de paper trading
+    // Criar carteira de paper trading (campo currency não existe no schema)
     await prisma.paperTradingWallet.create({
       data: {
         userId,
         balance: 10000.0,
-        currency: 'USDT'
+        equity: 10000.0
       }
     })
     
-    // Criar preferências de notificação
+    // Criar preferências de notificação com campos corretos do schema
     await prisma.notificationPreferences.create({
       data: {
         userId,
-        emailNotifications: true,
-        pushNotifications: true,
-        tradingAlerts: true,
-        marketUpdates: false,
-        weeklyReports: true
+        emailEnabled: true,
+        pushEnabled: true,
+        smsEnabled: false,
+        emailFrequency: 'INSTANT',
+        marketUpdates: true,
+        tradeAlerts: true,
+        securityAlerts: true,
+        newsAlerts: false,
+        priceAlerts: true,
+        robotAlerts: true,
+        subscriptionAlerts: true,
+        quietHoursEnabled: false,
+        timezone: 'UTC'
       }
     })
     
