@@ -27,8 +27,8 @@ interface GrokChatResponse {
   }
 }
 
-// Chave da API Grok - em produção deve vir das variáveis de ambiente
-const GROK_API_KEY = process.env.GROK_API_KEY || 'xai-qcPaqIxMtmo4tU36LrVVEMedkQwjrI9m5oaLsXgTHgAwSFw0bEUwwRiAflayzq4BEn4EOZQUriij7g2l'
+// Chave da API Grok - DEVE vir das variáveis de ambiente por segurança
+const GROK_API_KEY = process.env.GROK_API_KEY
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions'
 
 export async function POST(request: NextRequest) {
