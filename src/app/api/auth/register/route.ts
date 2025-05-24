@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, pbkdf2Sync } from 'crypto'
+import logger from '@/lib/logger'
 
 // Importações seguras
 let prisma: any = null
@@ -37,7 +38,7 @@ const loadDependencies = () => {
     
     return true
   } catch (error) {
-    console.error('[REGISTER] Erro ao carregar dependências:', error)
+    logger.error('[REGISTER] Erro ao carregar dependências:', error)
     return false
   }
 }
@@ -78,7 +79,7 @@ function createVerificationUrl(token: string): string {
 async function checkEmailExists(email: string): Promise<boolean> {
   try {
     if (!prisma) {
-      console.error('❌ [REGISTER] Prisma não disponível para verificar email')
+      logger.error('❌ [REGISTER] Prisma não disponível para verificar email')
       return false
     }
     
@@ -88,7 +89,7 @@ async function checkEmailExists(email: string): Promise<boolean> {
     })
     return !!user
   } catch (error) {
-    console.error('❌ [REGISTER] Erro ao verificar email:', error)
+    logger.error('❌ [REGISTER] Erro ao verificar email:', error)
     return false
   }
 }
@@ -97,7 +98,7 @@ async function checkEmailExists(email: string): Promise<boolean> {
 async function checkCpfExists(cpf: string): Promise<boolean> {
   try {
     if (!prisma) {
-      console.error('❌ [REGISTER] Prisma não disponível para verificar CPF')
+      logger.error('❌ [REGISTER] Prisma não disponível para verificar CPF')
       return false
     }
     
@@ -107,7 +108,7 @@ async function checkCpfExists(cpf: string): Promise<boolean> {
     })
     return !!user
   } catch (error) {
-    console.error('❌ [REGISTER] Erro ao verificar CPF:', error)
+    logger.error('❌ [REGISTER] Erro ao verificar CPF:', error)
     return false
   }
 }
@@ -116,11 +117,11 @@ async function checkCpfExists(cpf: string): Promise<boolean> {
 async function createUserDefaults(userId: string): Promise<void> {
   try {
     if (!prisma) {
-      console.error('❌ [REGISTER] Prisma não disponível para criar configurações padrão')
+      logger.error('❌ [REGISTER] Prisma não disponível para criar configurações padrão')
       return
     }
     
-    console.log(`🔧 [REGISTER] Criando configurações padrão para usuário: ${userId}`)
+    logger.info(`🔧 [REGISTER] Criando configurações padrão para usuário: ${userId}`)
     
     // Criar configurações de trading
     await prisma.tradingSetting.create({
@@ -157,9 +158,9 @@ async function createUserDefaults(userId: string): Promise<void> {
       }
     })
     
-    console.log('✅ [REGISTER] Configurações padrão criadas com sucesso')
+    logger.info('✅ [REGISTER] Configurações padrão criadas com sucesso')
   } catch (error) {
-    console.error('❌ [REGISTER] Erro ao criar configurações padrão:', error)
+    logger.error('❌ [REGISTER] Erro ao criar configurações padrão:', error)
   }
 }
 
@@ -167,7 +168,7 @@ async function createUserDefaults(userId: string): Promise<void> {
 async function registerUser(validatedData: any): Promise<{ user: any; verificationToken: string }> {
   const { name, email, password, cpf, birthDate, phone } = validatedData
   
-  console.log(`👤 [REGISTER] Iniciando registro para: ${email}`)
+  logger.info(`👤 [REGISTER] Iniciando registro para: ${email}`)
   
   if (!prisma) {
     throw new Error('Banco de dados não disponível')
@@ -208,12 +209,12 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
     }
   })
   
-  console.log(`✅ [REGISTER] Usuário criado com ID: ${user.id}`)
+  logger.info(`✅ [REGISTER] Usuário criado com ID: ${user.id}`)
   
   // Criar configurações padrão em background
   setImmediate(() => {
     createUserDefaults(user.id).catch(error => {
-      console.error('❌ [REGISTER] Erro ao criar configurações padrão:', error)
+      logger.error('❌ [REGISTER] Erro ao criar configurações padrão:', error)
     })
   })
   
@@ -224,36 +225,36 @@ async function registerUser(validatedData: any): Promise<{ user: any; verificati
 async function sendRegistrationEmails(email: string, name: string, verificationToken: string): Promise<void> {
   try {
     if (!sendVerificationEmail || !sendWelcomeEmail) {
-      console.log('⚠️ [REGISTER] Serviços de email não disponíveis')
+      logger.warn('⚠️ [REGISTER] Serviços de email não disponíveis')
       return
     }
     
     const verificationUrl = createVerificationUrl(verificationToken)
     
-    console.log(`📧 [REGISTER] Enviando emails para: ${email}`)
+    logger.info(`📧 [REGISTER] Enviando emails para: ${email}`)
     
     // Enviar email de verificação
     const verificationResult = await sendVerificationEmail(email, name, verificationUrl)
     
     if (verificationResult.success) {
-      console.log(`✅ [REGISTER] Email de verificação enviado via ${verificationResult.provider}`)
+      logger.info(`✅ [REGISTER] Email de verificação enviado via ${verificationResult.provider}`)
       
       // Enviar email de boas-vindas após verificação
       setTimeout(async () => {
         try {
           const welcomeResult = await sendWelcomeEmail(email, name)
           if (welcomeResult.success) {
-            console.log(`✅ [REGISTER] Email de boas-vindas enviado via ${welcomeResult.provider}`)
+            logger.info(`✅ [REGISTER] Email de boas-vindas enviado via ${welcomeResult.provider}`)
           }
         } catch (error) {
-          console.error('❌ [REGISTER] Erro ao enviar email de boas-vindas:', error)
+          logger.error('❌ [REGISTER] Erro ao enviar email de boas-vindas:', error)
         }
       }, 2000)
     } else {
-      console.error('❌ [REGISTER] Falha no envio do email de verificação:', verificationResult.error)
+      logger.error('❌ [REGISTER] Falha no envio do email de verificação:', verificationResult.error)
     }
   } catch (error) {
-    console.error('❌ [REGISTER] Erro no processo de envio de emails:', error)
+    logger.error('❌ [REGISTER] Erro no processo de envio de emails:', error)
   }
 }
 
@@ -262,12 +263,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
   const startTime = Date.now()
   
   try {
-    console.log('🚀 [REGISTER] Iniciando processo de registro')
+    logger.info('🚀 [REGISTER] Iniciando processo de registro')
     
     // Carregar dependências
     const dependenciesLoaded = loadDependencies()
     if (!dependenciesLoaded) {
-      console.error('❌ [REGISTER] Falha ao carregar dependências')
+      logger.error('❌ [REGISTER] Falha ao carregar dependências')
       return NextResponse.json({
         success: false,
         message: 'Erro interno do servidor. Tente novamente.'
@@ -278,7 +279,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     if (testDatabaseConnection) {
       const dbConnected = await testDatabaseConnection()
       if (!dbConnected) {
-        console.error('❌ [REGISTER] Falha na conexão com banco de dados')
+        logger.error('❌ [REGISTER] Falha na conexão com banco de dados')
         return NextResponse.json({
           success: false,
           message: 'Erro interno do servidor. Tente novamente.'
@@ -291,7 +292,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     try {
       rawData = await request.json()
     } catch (error) {
-      console.error('❌ [REGISTER] Erro ao parsear JSON:', error)
+      logger.error('❌ [REGISTER] Erro ao parsear JSON:', error)
       return NextResponse.json({
         success: false,
         message: 'Dados inválidos na requisição'
@@ -300,11 +301,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     
     const sanitizedData = sanitizeInput ? sanitizeInput(rawData) : rawData
     
-    console.log('📝 [REGISTER] Dados recebidos e sanitizados')
+    logger.info('📝 [REGISTER] Dados recebidos e sanitizados')
     
     // Validar dados
     if (!validateRegisterData) {
-      console.error('❌ [REGISTER] Função de validação não disponível')
+      logger.error('❌ [REGISTER] Função de validação não disponível')
       return NextResponse.json({
         success: false,
         message: 'Erro interno do servidor. Tente novamente.'
@@ -313,7 +314,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     
     const validation = validateRegisterData(sanitizedData)
     if (!validation.success) {
-      console.log('❌ [REGISTER] Dados inválidos:', validation.errors)
+      logger.info('❌ [REGISTER] Dados inválidos:', validation.errors)
       return NextResponse.json({
         success: false,
         message: 'Dados inválidos',
@@ -326,7 +327,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     // Verificar se email já existe
     const emailExists = await checkEmailExists(validatedData.email)
     if (emailExists) {
-      console.log(`❌ [REGISTER] Email já existe: ${validatedData.email}`)
+      logger.info(`❌ [REGISTER] Email já existe: ${validatedData.email}`)
       return NextResponse.json({
         success: false,
         message: 'Este email já está cadastrado'
@@ -336,7 +337,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     // Verificar se CPF já existe
     const cpfExists = await checkCpfExists(validatedData.cpf)
     if (cpfExists) {
-      console.log(`❌ [REGISTER] CPF já existe: ${validatedData.cpf}`)
+      logger.info(`❌ [REGISTER] CPF já existe: ${validatedData.cpf}`)
       return NextResponse.json({
         success: false,
         message: 'Este CPF já está cadastrado'
@@ -349,12 +350,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     // Enviar emails em background
     setImmediate(() => {
       sendRegistrationEmails(user.email, user.name, verificationToken).catch(error => {
-        console.error('❌ [REGISTER] Erro no envio de emails:', error)
+        logger.error('❌ [REGISTER] Erro no envio de emails:', error)
       })
     })
     
     const duration = Date.now() - startTime
-    console.log(`✅ [REGISTER] Registro concluído em ${duration}ms para: ${user.email}`)
+    logger.info(`✅ [REGISTER] Registro concluído em ${duration}ms para: ${user.email}`)
     
     return NextResponse.json({
       success: true,
@@ -371,7 +372,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`❌ [REGISTER] Erro após ${duration}ms:`, error)
+    logger.error(`❌ [REGISTER] Erro após ${duration}ms:`, error)
     
     // Verificar se é erro de constraint do banco (duplicata)
     if (error instanceof Error) {

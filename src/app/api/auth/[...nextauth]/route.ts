@@ -6,6 +6,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import GithubProvider from 'next-auth/providers/github'
 import bcrypt from 'bcryptjs'
 import { AuthOptions } from 'next-auth'
+import logger from '@/lib/logger'
 
 // Configuração robusta do NextAuth
 export const authOptions: AuthOptions = {
@@ -52,7 +53,7 @@ export const authOptions: AuthOptions = {
             role: user.role
           }
         } catch (error) {
-          console.error('[AUTH] Erro na autenticação:', error)
+          logger.error('[AUTH] Erro na autenticação:', error)
           throw error
         }
       }

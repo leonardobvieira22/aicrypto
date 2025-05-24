@@ -230,3 +230,80 @@ REGRAS IMPORTANTES:
 - **Configuração Simples**: Interface intuitiva para setup da API
 - **Fallback Gracioso**: Sistema continua funcionando mesmo com falhas parciais
 - **Documentação**: README atualizado com instruções claras
+
+# Sistema de Logs Profissional
+
+## Visão Geral
+O sistema de logs foi implementado utilizando a biblioteca [Pino](https://getpino.io/), garantindo logging estruturado, robusto e fácil de analisar tanto em desenvolvimento quanto em produção.
+
+- **Todos os logs são salvos em:** `logs/app.log`
+- **Logs aparecem coloridos no console** durante o desenvolvimento
+- **Logs são estruturados em JSON** (fáceis de filtrar, buscar e auditar)
+- **A pasta de logs é criada automaticamente** se não existir
+
+---
+
+## Como Usar no Código
+
+1. **Importe o logger:**
+   ```ts
+   import logger from '@/lib/logger'
+   ```
+2. **Registre logs de acordo com o contexto:**
+   ```ts
+   logger.info('Mensagem informativa')
+   logger.warn('Mensagem de aviso')
+   logger.error({ err }, 'Mensagem de erro')
+   logger.debug('Mensagem de debug detalhado')
+   // Exemplo com contexto:
+   logger.info({ userId, action: 'login' }, 'Usuário fez login')
+   ```
+
+---
+
+## Como Analisar os Logs
+
+- **Em tempo real no PowerShell:**
+  ```powershell
+  Get-Content -Path .\logs\app.log -Wait
+  ```
+- **No editor:**
+  Basta abrir o arquivo `logs/app.log` para ver todo o histórico.
+- **Os logs são em JSON:**
+  Fáceis de filtrar por nível (`info`, `error`, etc) ou por contexto (ex: userId, rota, etc).
+
+---
+
+## Boas Práticas
+
+- Sempre use o logger para registrar eventos importantes, erros e ações de usuários.
+- Inclua contexto relevante nos logs (ex: userId, rota, dados do request, etc).
+- Nunca registre dados sensíveis (senhas, tokens, etc).
+- Use diferentes níveis de log:
+  - `info`: eventos normais do sistema
+  - `warn`: situações inesperadas, mas não críticas
+  - `error`: falhas e exceções
+  - `debug`: detalhes para diagnóstico em desenvolvimento
+
+---
+
+## Exemplo de Log Gerado
+```json
+{
+  "level": 30,
+  "time": "2025-05-24T02:00:00.000Z",
+  "pid": 12345,
+  "hostname": "DESKTOP-USER",
+  "env": "development",
+  "service": "crypto-trading-platform",
+  "msg": "Usuário fez login",
+  "userId": "abc123",
+  "action": "login"
+}
+```
+
+---
+
+## Observações
+- O sistema está pronto para ser integrado com AWS CloudWatch, LogTail, ou qualquer ferramenta de análise de logs.
+- Para dúvidas ou melhorias, consulte o arquivo `src/lib/logger.ts`.
