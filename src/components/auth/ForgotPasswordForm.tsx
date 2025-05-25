@@ -10,15 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { isValidEmail } from '@/lib/utils/validation'
 import { Loader2 } from 'lucide-react'
-import { useMediaQuery, breakpoints } from '@/lib/hooks/useMediaQuery'
 
 // Esquema de validação do formulário
 const forgotPasswordSchema = z.object({
   email: z
     .string()
     .min(1, { message: 'Email é obrigatório' })
-    .email({ message: 'Email inválido' })
-    .refine((email) => isValidEmail(email), { message: 'Formato de email inválido' }),
+    .email({ message: 'Email inválido' }),
 })
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
@@ -82,9 +80,6 @@ export default function ForgotPasswordForm() {
     }
   }
 
-  // Usar o hook para verificar se estamos em um dispositivo móvel
-  const isMobile = useMediaQuery(breakpoints.mobile)
-
   return (
     <div className="w-full max-w-md mx-auto px-4 sm:px-0">
       {formStatus.type && (
@@ -130,7 +125,10 @@ export default function ForgotPasswordForm() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
               </>
             ) : (
-              isMobile ? 'Enviar link' : 'Enviar link de recuperação'
+              <>
+                <span className="sm:hidden">Enviar link</span>
+                <span className="hidden sm:inline">Enviar link de recuperação</span>
+              </>
             )}
           </Button>
         </form>

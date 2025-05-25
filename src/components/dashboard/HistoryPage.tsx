@@ -32,8 +32,22 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+// Tipo para os itens do histórico
+interface HistoryItem {
+  id: string
+  type: string
+  pair: string
+  robot: string
+  amount: string
+  price: string
+  value: string
+  date: string
+  time: string
+  status: string
+}
+
 // Gerar dados fictícios para a tabela de histórico
-const generateHistoryData = () => {
+const generateHistoryData = (): HistoryItem[] => {
   const types = ["compra", "venda"]
   const pairs = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "BNB/USDT"]
   const robots = ["RSI Master", "Bollinger IA"]
@@ -82,7 +96,13 @@ const generateHistoryData = () => {
 }
 
 export default function HistoryPage() {
-  const [history] = useState(generateHistoryData())
+  // Gerar dados apenas uma vez no cliente usando useState com inicializador
+  const [historyData] = useState(() => generateHistoryData())
+  const [filteredData, setFilteredData] = useState<HistoryItem[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState<string>("todos")
+  const [typeFilter, setTypeFilter] = useState<string>("todos")
+  const [sortConfig, setSortConfig] = useState<{ key: keyof HistoryItem; direction: 'asc' | 'desc' } | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
   const [filterPair, setFilterPair] = useState<string | null>(null)
   const [filterRobot, setFilterRobot] = useState<string | null>(null)
@@ -90,11 +110,11 @@ export default function HistoryPage() {
   const [dateRange, setDateRange] = useState<string>("all")
 
   // Obter dados únicos para os filtros
-  const uniquePairs = Array.from(new Set(history.map(item => item.pair)))
-  const uniqueRobots = Array.from(new Set(history.map(item => item.robot)))
+  const uniquePairs = Array.from(new Set(historyData.map(item => item.pair)))
+  const uniqueRobots = Array.from(new Set(historyData.map(item => item.robot)))
 
   // Aplicar filtros
-  const filteredHistory = history.filter(item => {
+  const filteredHistory = historyData.filter(item => {
     if (filterType && item.type !== filterType) return false
     if (filterPair && item.pair !== filterPair) return false
     if (filterRobot && item.robot !== filterRobot) return false
@@ -154,14 +174,14 @@ export default function HistoryPage() {
             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Operações</div>
               <div className="mt-2 flex items-center">
-                <span className="text-3xl font-bold">{history.length}</span>
+                <span className="text-3xl font-bold">{historyData.length}</span>
               </div>
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Compras</div>
               <div className="mt-2 flex items-center">
-                <span className="text-3xl font-bold">{history.filter(item => item.type === "compra").length}</span>
+                <span className="text-3xl font-bold">{historyData.filter(item => item.type === "compra").length}</span>
                 <ArrowUpRight className="h-5 w-5 text-green-500 ml-2" />
               </div>
             </div>
@@ -169,7 +189,7 @@ export default function HistoryPage() {
             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Vendas</div>
               <div className="mt-2 flex items-center">
-                <span className="text-3xl font-bold">{history.filter(item => item.type === "venda").length}</span>
+                <span className="text-3xl font-bold">{historyData.filter(item => item.type === "venda").length}</span>
                 <ArrowDownRight className="h-5 w-5 text-red-500 ml-2" />
               </div>
             </div>
@@ -178,7 +198,7 @@ export default function HistoryPage() {
               <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Volume Total</div>
               <div className="mt-2 flex items-center">
                 <span className="text-3xl font-bold">
-                  ${history.reduce((acc, item) => acc + Number.parseFloat(item.value), 0).toFixed(2)}
+                  ${historyData.reduce((acc, item) => acc + Number.parseFloat(item.value), 0).toFixed(2)}
                 </span>
               </div>
             </div>

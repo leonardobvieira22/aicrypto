@@ -18,8 +18,11 @@ type RobotContextType = {
 
 const RobotContext = createContext<RobotContextType | undefined>(undefined)
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { binanceService, isConnected } = useBinance()
+  const { binanceService, isMasterConnected } = useBinance()
   const [robotManager] = useState(() => new RobotManager(binanceService))
   const [robots, setRobots] = useState<Robot[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +45,7 @@ export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!loading) {
       // Se a conexão Binance for perdida, desativar todos os robôs
-      if (!isConnected) {
+      if (!isMasterConnected) {
         // Usar robotManager.getRobots() em vez de confiar no estado
         const currentRobots = robotManager.getRobots();
 
@@ -60,10 +63,15 @@ export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setRobots(robotManager.getRobots());
       }
     }
-  }, [isConnected, loading, robotManager])
+  }, [isMasterConnected, loading, robotManager])
 
   // Carregar configurações salvas
   const loadRobotSettings = () => {
+    if (!isClient()) {
+      console.warn('[ROBOT] Tentativa de carregar configurações no servidor ignorada')
+      return
+    }
+
     try {
       const savedSettings = localStorage.getItem('robot_settings')
 
@@ -83,7 +91,7 @@ export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           })
 
           // Ativar/desativar o robô se a Binance estiver conectada
-          if (isConnected && isActive) {
+          if (isMasterConnected && isActive) {
             robotManager.toggleRobotActive(id, true)
           }
         })
@@ -98,6 +106,11 @@ export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Salvar configurações dos robôs
   const saveRobotSettings = () => {
+    if (!isClient()) {
+      console.warn('[ROBOT] Tentativa de salvar configurações no servidor ignorada')
+      return
+    }
+
     try {
       const settings = robots.map(robot => ({
         id: robot.id,
@@ -117,7 +130,7 @@ export const RobotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Ativar/desativar um robô
   const toggleRobotActive = (id: string, active: boolean): boolean => {
     // Verificar se a Binance está conectada
-    if (active && !isConnected) {
+    if (active && !isMasterConnected) {
       toast.error("Conexão necessária", {
         description: "Conecte sua conta Binance antes de ativar um robô."
       })

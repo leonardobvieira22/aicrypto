@@ -201,6 +201,13 @@ export default function RegisterForm() {
   // Estado dos erros
   const [errors, setErrors] = useState<FormErrors>({})
 
+  // Gerar data máxima apenas uma vez para evitar problemas de hidratação
+  const [maxDate] = useState(() => {
+    const date = new Date()
+    date.setFullYear(date.getFullYear() - 18)
+    return date.toISOString().split('T')[0]
+  })
+
   // Função para validar um campo específico
   const validateField = useCallback((name: string, value: any): string => {
     switch (name) {
@@ -456,11 +463,7 @@ export default function RegisterForm() {
             type="date"
             value={formData.dateOfBirth}
             onChange={(e) => updateField('dateOfBirth', e.target.value)}
-            max={(() => {
-              const date = new Date()
-              date.setFullYear(date.getFullYear() - 18)
-              return date.toISOString().split('T')[0]
-            })()}
+            max={maxDate}
             className={cn(
               "transition-all duration-200",
               errors.dateOfBirth && "border-red-500 focus-visible:ring-red-500"

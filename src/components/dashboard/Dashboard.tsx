@@ -67,7 +67,8 @@ const formatCandlestickData = (klineData: KlineData[]) => {
 
 // Função para gerar dados de demonstração de velas aleatórias
 const generateDemoData = (symbol: string, interval: string, count = 100) => {
-  const now = new Date().getTime();
+  // Usar timestamp estático para evitar problemas de hidratação
+  const baseTimestamp = 1703980800000; // timestamp fixo para demonstração
   const millisecondsPerCandle = {
     '1m': 60 * 1000,
     '5m': 5 * 60 * 1000,
@@ -99,7 +100,7 @@ const generateDemoData = (symbol: string, interval: string, count = 100) => {
   let lastClose = basePrice;
 
   for (let i = 0; i < count; i++) {
-    const timestamp = now - (count - i) * millisecondsPerCandle;
+    const timestamp = baseTimestamp + (count - i) * millisecondsPerCandle;
     const changePercent = (Math.random() - 0.5) * volatility;
     const change = lastClose * changePercent;
 

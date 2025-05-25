@@ -38,12 +38,14 @@ interface QuickAction {
 }
 
 export function InteractiveChat() {
+  const [baseTimestamp] = useState(() => new Date())
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       content: 'Olá! 👋 Sou o **AI Crypto**, seu assistente especializado em trading de criptomoedas. Como posso ajudá-lo hoje?\n\nPosso ajudar com:\n• 📈 Análise de mercado\n• 💰 Estratégias de trading\n• 📊 Indicadores técnicos\n• 🔍 Pesquisa de ativos',
       role: 'assistant',
-      timestamp: new Date(),
+      timestamp: baseTimestamp,
       reactions: []
     }
   ])
@@ -202,7 +204,17 @@ export function InteractiveChat() {
   }, [focusOnChat])
 
   const copyMessage = (content: string) => {
-    navigator.clipboard.writeText(content)
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(content).catch(() => {
+        // Fallback para método antigo se clipboard API falhar
+        const textArea = document.createElement('textarea')
+        textArea.value = content
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      })
+    }
   }
 
   const reactToMessage = (messageId: string, reaction: 'like' | 'dislike') => {

@@ -9,7 +9,8 @@ import { Eye, EyeOff, Bug, Users, Database, Wifi, Server, RefreshCw } from 'luci
 
 export function AuthDebugPanel() {
   const [isVisible, setIsVisible] = useState(false);
-  const [logs, setLogs] = useState(() => AuthAuditor.getLogs());
+  const [logs, setLogs] = useState<any[]>([]);
+  const [currentTime] = useState(() => new Date().toLocaleString())
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     database: false,
     auth: false,
@@ -144,7 +145,7 @@ export function AuthDebugPanel() {
                 </div>
                 <div className="flex justify-between">
                   <span>Timestamp:</span>
-                  <span className="font-mono text-xs">{new Date().toLocaleString()}</span>
+                  <span className="font-mono text-xs">{currentTime}</span>
                 </div>
               </div>
             </AlertDescription>

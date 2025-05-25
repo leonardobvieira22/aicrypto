@@ -11,7 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { calculatePasswordStrength } from '@/lib/utils/validation'
-import { useMediaQuery, breakpoints } from '@/lib/hooks/useMediaQuery'
 
 // Esquema de validação do formulário
 const resetPasswordSchema = z.object({
@@ -56,12 +55,16 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   // Verificar a força da senha quando ela mudar
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
+    const subscription = form.watch((value: Partial<ResetPasswordFormValues>, { name }: { name?: string }) => {
       if (name === 'password' && value.password) {
-        setPasswordStrength(calculatePasswordStrength(value.password as string))
+        setPasswordStrength(calculatePasswordStrength(value.password))
       }
     })
-    return () => subscription.unsubscribe()
+    return () => {
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe()
+      }
+    }
   }, [form])
 
   // Verificar se o token é válido ao montar o componente
@@ -142,9 +145,6 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     if (passwordStrength <= 3) return 'bg-yellow-500'
     return 'bg-green-500'
   }
-
-  // Verificar se estamos em um dispositivo móvel
-  const isMobile = useMediaQuery(breakpoints.mobile)
 
   return (
     <div className="w-full max-w-md mx-auto px-4 sm:px-0">
@@ -239,7 +239,9 @@ export default function ResetPasswordForm({ token }: { token: string }) {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isMobile ? 'Redefinindo...' : 'Redefinindo senha...'}
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="sm:hidden">Redefinindo...</span>
+                  <span className="hidden sm:inline">Redefinindo senha...</span>
                 </>
               ) : (
                 'Redefinir senha'

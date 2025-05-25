@@ -161,8 +161,9 @@ const generateTransactionHistory = (): Transaction[] => {
 }
 
 export default function WalletPage() {
-  const [cryptos] = useState(generateCryptoData())
-  const [transactions] = useState(generateTransactionHistory())
+  // Gerar dados apenas uma vez no cliente usando useState com inicializador
+  const [cryptos] = useState(() => generateCryptoData())
+  const [transactions] = useState(() => generateTransactionHistory())
   const [isHidingBalances, setIsHidingBalances] = useState(false)
   const [depositDialogOpen, setDepositDialogOpen] = useState(false)
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false)

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
-import { useMediaQuery, breakpoints } from '@/lib/hooks/useMediaQuery'
 import Link from 'next/link'
 
 export default function EmailVerificationForm({ token, email }: { token: string; email: string }) {
@@ -21,9 +20,6 @@ export default function EmailVerificationForm({ token, email }: { token: string;
     type: null,
     message: null,
   })
-
-  // Verificar se estamos em um dispositivo móvel
-  const isMobile = useMediaQuery(breakpoints.mobile)
 
   // Verificar token quando o componente é montado
   useEffect(() => {
@@ -183,7 +179,10 @@ export default function EmailVerificationForm({ token, email }: { token: string;
               ) : countdown > 0 ? (
                 `Reenviar em ${countdown}s`
               ) : (
-                isMobile ? 'Reenviar email' : 'Reenviar email de verificação'
+                <>
+                  <span className="sm:hidden">Reenviar email</span>
+                  <span className="hidden sm:inline">Reenviar email de verificação</span>
+                </>
               )}
             </Button>
 
