@@ -17,6 +17,9 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { X } from "lucide-react"
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 // Tipos
 interface CookieSettings {
   essential: boolean
@@ -28,6 +31,7 @@ interface CookieSettings {
 export function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<CookieSettings>({
     essential: true, // Sempre ativo, não pode ser desativado
     analytics: true,
@@ -35,17 +39,26 @@ export function CookieConsent() {
     preferences: true,
   })
 
+  // Garantir hidratação correta
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Verifica se o consentimento já foi dado
   useEffect(() => {
+    if (!mounted || !isClient()) return
+
     const hasConsent = localStorage.getItem("cookieConsent")
     if (!hasConsent) {
       // Atraso de 1 segundo para mostrar o banner após o carregamento da página
       const timer = setTimeout(() => setShowBanner(true), 1000)
       return () => clearTimeout(timer)
     }
-  }, [])
+  }, [mounted])
 
   const handleAcceptAll = () => {
+    if (!isClient()) return
+
     setSettings({
       essential: true,
       analytics: true,
@@ -72,6 +85,8 @@ export function CookieConsent() {
   }
 
   const handleRejectNonEssential = () => {
+    if (!isClient()) return
+
     setSettings({
       essential: true,
       analytics: false,
@@ -103,6 +118,8 @@ export function CookieConsent() {
   }
 
   const handleSavePreferences = () => {
+    if (!isClient()) return
+
     localStorage.setItem(
       "cookieConsent",
       JSON.stringify({
@@ -113,6 +130,11 @@ export function CookieConsent() {
     )
 
     setShowDialog(false)
+  }
+
+  // Não renderizar nada durante hidratação
+  if (!mounted) {
+    return null
   }
 
   return (

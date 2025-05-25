@@ -16,6 +16,9 @@
 import type { ReportCallback } from 'web-vitals'
 import { onCLS, onFCP, onLCP, onTTFB } from 'web-vitals'
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 // Endpoint para enviar os dados (poderia ser uma API interna ou serviço de analytics)
 const analyticsEndpoint = process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT || ''
 
@@ -40,7 +43,7 @@ interface AnalyticsData {
  * Relata uma métrica Web Vital para o endpoint de análise
  */
 const reportVital = (metric: AnalyticsData) => {
-  if (!analyticsEndpoint) {
+  if (!analyticsEndpoint || !isClient()) {
     console.debug('[Web Vitals]', metric)
     return
   }
@@ -66,6 +69,18 @@ const reportVital = (metric: AnalyticsData) => {
  * Coleta informações sobre o dispositivo e conexão
  */
 const getEnvironmentInfo = () => {
+  // Valores padrão para SSR
+  if (!isClient()) {
+    return {
+      deviceType: 'desktop',
+      connectionType: undefined,
+      effectiveType: undefined,
+      theme: 'light',
+      viewportWidth: 1024,
+      viewportHeight: 768,
+    }
+  }
+
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent)
   const deviceType = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop'
@@ -111,6 +126,12 @@ export function reportWebVitals(onPerfEntry?: ReportCallback) {
  * Usa o reportVital para enviar os dados para o endpoint
  */
 export function startWebVitalsMonitor() {
+  // Só executar no cliente
+  if (!isClient()) {
+    console.log('[Web Vitals] Monitoramento ignorado no servidor')
+    return
+  }
+
   try {
     const reportCallback: ReportCallback = (metric) => {
       const { name, id, value, delta } = metric

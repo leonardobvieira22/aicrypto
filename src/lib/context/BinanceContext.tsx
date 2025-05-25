@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import { getMasterBinanceCredentials, getUserBinanceCredentials, hasUserCredentials } from '@/lib/config/api-keys'
 import { useAuth } from '@/lib/context/AuthContext'
 
+// Função auxiliar para verificar se estamos no cliente
+const isClient = () => typeof window !== 'undefined'
+
 type BinanceContextType = {
   // Serviço principal (sempre usa credenciais mãe para dados)
   binanceService: BinanceService
@@ -82,6 +85,11 @@ export const BinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Configurar credenciais do usuário (para funcionalidades futuras)
   const setUserCredentials = async (apiKey: string, apiSecret: string): Promise<boolean> => {
+    if (!isClient()) {
+      console.warn('[BINANCE] Tentativa de salvar credenciais no servidor ignorada')
+      return false
+    }
+
     try {
       // Salvar no localStorage
       localStorage.setItem('user_binance_api_key', apiKey)
@@ -110,6 +118,11 @@ export const BinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Limpar credenciais do usuário
   const clearUserCredentials = () => {
+    if (!isClient()) {
+      console.warn('[BINANCE] Tentativa de limpar credenciais no servidor ignorada')
+      return
+    }
+
     localStorage.removeItem('user_binance_api_key')
     localStorage.removeItem('user_binance_api_secret')
     setHasUserApi(false)
