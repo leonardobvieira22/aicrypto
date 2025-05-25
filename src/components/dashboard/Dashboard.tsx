@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -123,12 +124,35 @@ const generateDemoData = (symbol: string, interval: string, count = 100) => {
   return data;
 };
 
+// Tipos para o componente TradingChart
+interface TradingChartProps {
+  symbol?: string;
+  interval?: string;
+}
+
+// Import dinâmico para evitar problemas de SSR
+const TradingChart = dynamic(
+  () => import('./TradingChart').then((mod) => ({ default: mod.default })), 
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[350px] md:h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
+        <div className="flex flex-col items-center px-4">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+          <p className="mt-3 text-gray-400 text-center text-sm md:text-base">Carregando gráfico...</p>
+          <p className="mt-1 text-gray-500 text-xs md:text-sm">Preparando análise técnica</p>
+        </div>
+      </div>
+    )
+  }
+) as React.ComponentType<TradingChartProps>
+
 // Componente para mostrar métricas de preço
-const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) => {
+const PriceMetrics = ({ data, symbol }: { data: any[]; symbol: string }) => {
   if (!data || data.length === 0) return null
 
   const lastCandle = data[data.length - 1]
-  const currentPrice = lastCandle.close
+  const currentPrice = lastCandle?.close || 50000
   
   // Calcular variação de 24h baseado em dados reais
   let priceChange24h = 0
@@ -137,15 +161,15 @@ const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) 
   
   if (data.length > 1) {
     // Tentar encontrar o candle de 24h atrás baseado no timestamp
-    const now = lastCandle.time as number
+    const now = lastCandle.time
     const twentyFourHoursAgo = now - (24 * 60 * 60) // 24 horas em segundos
     
     // Encontrar o candle mais próximo de 24h atrás
     let closestCandle = data[0]
-    let closestTimeDiff = Math.abs((closestCandle.time as number) - twentyFourHoursAgo)
+    let closestTimeDiff = Math.abs(closestCandle.time - twentyFourHoursAgo)
     
     for (const candle of data) {
-      const timeDiff = Math.abs((candle.time as number) - twentyFourHoursAgo)
+      const timeDiff = Math.abs(candle.time - twentyFourHoursAgo)
       if (timeDiff < closestTimeDiff) {
         closestTimeDiff = timeDiff
         closestCandle = candle
@@ -247,310 +271,6 @@ const PriceMetrics = ({ data, symbol }: { data: CandleData[]; symbol: string }) 
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-// Componente para o gráfico de trading
-const TradingChart = ({ symbol = "BTCUSDT", interval = "1m" }) => {
-  const { binanceService, isMasterConnected } = useBinance()
-  
-  const [selectedSymbol, setSelectedSymbol] = useState(symbol)
-  const [selectedInterval, setSelectedInterval] = useState(interval)
-  const [candleData, setCandleData] = useState<CandleData[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  
-  const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null)
-
-  // Hook para gerenciar atualizações em tempo real
-  const realtimeChart = useRealtimeChart({
-    symbol: selectedSymbol,
-    interval: selectedInterval,
-    onDataUpdate: useCallback((data: KlineTick) => {
-      if (!seriesRef.current) return
-
-      const update = {
-        time: (data.kline.startTime / 1000) as Time,
-        open: Number.parseFloat(data.kline.open),
-        high: Number.parseFloat(data.kline.high),
-        low: Number.parseFloat(data.kline.low),
-        close: Number.parseFloat(data.kline.close),
-        volume: Number.parseFloat(data.kline.volume)
-      }
-
-      setCandleData(currentData => {
-        const newData = [...currentData]
-        const lastIndex = newData.length - 1
-
-        if (lastIndex >= 0 && newData[lastIndex].time === update.time) {
-          newData[lastIndex] = update
-        } else if (lastIndex >= 0) {
-          newData.push(update)
-        }
-        return newData
-      })
-
-      seriesRef.current.update(update)
-    }, []),
-    enableAutoReconnect: true,
-    maxRetries: 10,
-    retryDelay: 2000,
-    inactivityTimeout: 120000
-  })
-
-  // Sync props with internal state only when they change
-  useEffect(() => {
-    setSelectedSymbol(symbol)
-  }, [symbol])
-  
-  useEffect(() => {
-    setSelectedInterval(interval)
-  }, [interval])
-
-  // Memoize loadHistoricalData to prevent recreation on every render
-  const loadHistoricalData = useCallback(async () => {
-    if (!seriesRef.current || !isMasterConnected) return
-    
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Buscar mais dados para cálculos precisos de 24h
-      const limit = selectedInterval === '1m' ? 1440 : // 24h em minutos
-                    selectedInterval === '5m' ? 288 :  // 24h em 5min
-                    selectedInterval === '15m' ? 96 :  // 24h em 15min
-                    selectedInterval === '1h' ? 24 :   // 24h em horas
-                    selectedInterval === '4h' ? 6 :    // 24h em 4h
-                    selectedInterval === '1d' ? 30 :   // 30 dias
-                    200
-
-      const klineData = await binanceService.getKlines(selectedSymbol, selectedInterval, limit)
-      const candlestickData = formatCandlestickData(klineData)
-
-      seriesRef.current.setData(candlestickData)
-      setCandleData(candlestickData)
-
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent()
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados históricos:', error)
-      setError('Falha ao carregar dados históricos. Verifique sua conexão.')
-      toast.error('Erro ao carregar dados', {
-        description: 'Não foi possível carregar os dados do gráfico. Tente novamente mais tarde.'
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [binanceService, selectedSymbol, selectedInterval, isMasterConnected])
-
-  // Chart initialization - only when container is available
-  useEffect(() => {
-    if (!chartContainerRef.current) return
-
-    // Cleanup existing chart
-    try {
-      if (chartRef.current) {
-        chartRef.current.remove()
-      }
-    } catch (error) {
-      console.log('Chart já foi removido ou não existe')
-    }
-
-    // Função auxiliar para obter dimensões responsivas
-    const getResponsiveHeight = () => {
-      if (typeof window === 'undefined') return 450 // Valor padrão para SSR
-      return window.innerWidth < 640 ? 350 : 450
-    }
-
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#9CA3AF',
-      },
-      grid: {
-        vertLines: { color: 'rgba(55, 65, 81, 0.2)' },
-        horzLines: { color: 'rgba(55, 65, 81, 0.2)' },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: getResponsiveHeight(), // Usando função auxiliar
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderColor: 'rgba(55, 65, 81, 0.3)',
-      },
-      crosshair: {
-        mode: 1,
-        vertLine: {
-          color: 'rgba(99, 102, 241, 0.5)',
-          width: 1,
-          style: 2,
-        },
-        horzLine: {
-          color: 'rgba(99, 102, 241, 0.5)',
-          width: 1,
-          style: 2,
-        },
-      },
-    })
-
-    const handleResize = () => {
-      if (chartContainerRef.current && typeof window !== 'undefined') {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: getResponsiveHeight()
-        })
-      }
-    }
-
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10B981',
-      downColor: '#EF4444',
-      borderVisible: false,
-      wickUpColor: '#10B981',
-      wickDownColor: '#EF4444',
-    })
-
-    chartRef.current = chart
-    seriesRef.current = candlestickSeries
-
-    // Só adicionar listeners no cliente
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', handleResize)
-    }
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', handleResize)
-      }
-      try {
-        chart.remove()
-      } catch (error) {
-        console.log('Chart cleanup error:', error)
-      }
-    }
-  }, []) // Empty dependency array - only run once
-
-  // Load data when chart is ready or symbol/interval changes
-  useEffect(() => {
-    if (chartRef.current && seriesRef.current) {
-      loadHistoricalData()
-    }
-  }, [selectedSymbol, selectedInterval, loadHistoricalData])
-
-  // Função para tentar reconectar manualmente
-  const handleManualRetry = useCallback(() => {
-    setError(null)
-    setIsLoading(true)
-    
-    // Tentar reconectar o sistema de tempo real
-    realtimeChart.reconnect()
-    
-    // Recarregar dados históricos
-    setTimeout(() => {
-      loadHistoricalData()
-    }, 1000)
-  }, [realtimeChart, loadHistoricalData])
-
-  // Estados de loading e erro com design responsivo
-  if (isLoading && !seriesRef.current) {
-    return (
-      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/30 to-gray-800/30 rounded-2xl border border-gray-700/30 backdrop-blur-sm">
-        <div className="flex flex-col items-center px-4">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-          <p className="mt-3 text-gray-400 text-center text-sm md:text-base">Carregando dados do gráfico...</p>
-          <p className="mt-1 text-gray-500 text-xs md:text-sm">Conectando aos servidores de dados</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Estado de erro com componente especializado
-  if ((error || realtimeChart.hasError) && !realtimeChart.internetConnected) {
-    return (
-      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px]">
-        <ConnectionErrorState
-          status={realtimeChart.globalConnectionStatus}
-          onRetry={handleManualRetry}
-          isRetrying={realtimeChart.isRetrying || isLoading}
-          canRetry={realtimeChart.canRetry}
-          size="md"
-          showDetails={true}
-          className="h-full"
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Barra de status da conexão para mobile */}
-      <div className="flex items-center justify-between bg-gray-800/30 rounded-lg p-2 md:p-3">
-        <div className="flex items-center space-x-2">
-          <div className={`w-2 h-2 rounded-full ${
-            realtimeChart.isConnected && realtimeChart.internetConnected ? 'bg-green-400 animate-pulse' : 
-            realtimeChart.isConnecting ? 'bg-yellow-400 animate-pulse' :
-            'bg-red-400'
-          }`}></div>
-          <span className="text-xs md:text-sm text-gray-300">
-            {realtimeChart.isConnected && realtimeChart.internetConnected ? 'Tempo real ativo' :
-             realtimeChart.isConnecting ? 'Conectando...' :
-             'Dados desatualizados'}
-          </span>
-          
-          {/* Badge de qualidade da conexão */}
-          {realtimeChart.isConnected && (
-            <Badge 
-              variant="outline" 
-              className={`text-xs ${
-                realtimeChart.connectionQuality === 'excellent' ? 'border-green-500/30 text-green-400' :
-                realtimeChart.connectionQuality === 'good' ? 'border-blue-500/30 text-blue-400' :
-                realtimeChart.connectionQuality === 'poor' ? 'border-yellow-500/30 text-yellow-400' :
-                'border-red-500/30 text-red-400'
-              }`}
-            >
-              {realtimeChart.connectionQuality === 'excellent' ? 'Excelente' :
-               realtimeChart.connectionQuality === 'good' ? 'Boa' :
-               realtimeChart.connectionQuality === 'poor' ? 'Fraca' : 'Offline'}
-            </Badge>
-          )}
-        </div>
-        
-        {realtimeChart.lastUpdateTime && (
-          <span className="text-xs text-gray-400 hidden sm:block">
-            Última atualização: {realtimeChart.lastUpdateTime.toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            })}
-          </span>
-        )}
-        
-        {(error || realtimeChart.hasError) && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleManualRetry}
-            disabled={realtimeChart.isRetrying || isLoading}
-            className="text-xs border-gray-600 text-gray-300 hover:bg-gray-700 h-6 px-2 md:h-8 md:px-3"
-          >
-            <RefreshCw className={`h-3 w-3 mr-1 ${(realtimeChart.isRetrying || isLoading) ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Reconectar</span>
-            <span className="sm:hidden">↻</span>
-          </Button>
-        )}
-      </div>
-
-      {/* Container do gráfico */}
-      <div ref={chartContainerRef} className="w-full h-[350px] md:h-[450px] bg-gradient-to-br from-gray-900/20 to-gray-800/20 rounded-2xl border border-gray-700/20 backdrop-blur-sm" />
-      
-      {/* Métricas de preço - só mostrar se tiver dados */}
-      {!isLoading && !error && candleData.length > 0 && (
-        <PriceMetrics data={candleData} symbol={selectedSymbol} />
-      )}
     </div>
   )
 }
@@ -664,11 +384,11 @@ const CryptoIcon = ({ symbol }: { symbol: string }) => {
 export default function Dashboard() {
   const [selectedPair, setSelectedPair] = useState("BTCUSDT")
   const [selectedInterval, setSelectedInterval] = useState("1m")
-  const [isClient, setIsClient] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
-  // Garantir que componentes dependentes do browser só renderizem no cliente
+  // Garantir hidratação correta
   useEffect(() => {
-    setIsClient(true)
+    setMounted(true)
   }, [])
 
   const tradingPairs = [
@@ -690,21 +410,16 @@ export default function Dashboard() {
 
   const getCurrentPair = () => tradingPairs.find(p => p.value === selectedPair) || tradingPairs[0]
 
-  // Renderizar um placeholder durante a hidratação
-  if (!isClient) {
+  // Renderizar placeholder durante hidratação
+  if (!mounted) {
     return (
       <div className="space-y-6 max-w-full overflow-x-hidden">
-        {/* Header Section */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <p className="text-gray-400 mt-1">
-              Bem-vindo de volta, <span className="text-blue-400">João Silva</span>
-            </p>
+            <p className="text-gray-400 mt-1">Carregando dados...</p>
           </div>
         </div>
-
-        {/* Loading State */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl border border-gray-700/50 p-6 animate-pulse">
@@ -712,11 +427,9 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-
-        {/* Chart Loading */}
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-2xl border border-gray-700/30 backdrop-blur-sm p-6">
           <div className="h-96 bg-gray-700/30 rounded-xl animate-pulse flex items-center justify-center">
-            <div className="text-gray-400">Carregando interface...</div>
+            <div className="text-gray-400">Inicializando interface...</div>
           </div>
         </div>
       </div>
